@@ -19,7 +19,9 @@ import { formatDateTime, formatNumber } from "@/lib/format";
 import { AuditLogPanel } from "../../../_components/audit/audit-log-panel";
 import { OrganizationFormDialog } from "../../_components/organization-form-dialog";
 import { OrganizationRowActions } from "../../_components/organization-row-actions";
+import { ClientProfileCard } from "./client-profile-card";
 import { OrganizationRolesCard } from "./organization-roles-card";
+import { OrganizationSubscriptionsCard } from "./organization-subscriptions-card";
 import { OrganizationUsersCard } from "./organization-users-card";
 
 /** Détail d'une entreprise : identité, comptes, rôles et journal d'audit. */
@@ -96,16 +98,18 @@ export function OrganizationDetail({ id }: { id: string }) {
       <Tabs defaultValue="identity">
         <TabsList>
           <TabsTrigger value="identity">Identité</TabsTrigger>
+          <TabsTrigger value="subscriptions">Souscriptions</TabsTrigger>
           <TabsTrigger value="users">Comptes</TabsTrigger>
           <TabsTrigger value="roles">Rôles</TabsTrigger>
           <TabsTrigger value="audit">Journal</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="identity" className="pt-4">
+        <TabsContent value="identity" className="flex flex-col gap-4 pt-4">
+          <ClientProfileCard organization={data} />
           <Card>
             <CardHeader className="border-b">
-              <CardTitle>Informations</CardTitle>
-              <CardDescription>Coordonnées et paramètres régionaux de l'organisation.</CardDescription>
+              <CardTitle>Organisation</CardTitle>
+              <CardDescription>Coordonnées et paramètres régionaux enregistrés par l'API.</CardDescription>
             </CardHeader>
             <CardContent>
               <DetailList
@@ -124,6 +128,10 @@ export function OrganizationDetail({ id }: { id: string }) {
               />
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="subscriptions" className="pt-4">
+          <OrganizationSubscriptionsCard organizationId={data.id} />
         </TabsContent>
 
         <TabsContent value="users" className="pt-4">

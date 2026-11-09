@@ -4,7 +4,7 @@ import { useState } from "react";
 
 import Link from "next/link";
 
-import { Ban, Eye, MoreHorizontal, Pencil, ShieldCheck, Trash2 } from "lucide-react";
+import { Ban, Eye, KeyRound, MoreHorizontal, Pencil, ShieldCheck, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { ConfirmDialog } from "@/components/confirm-dialog";
@@ -22,9 +22,10 @@ import { getErrorMessage } from "@/lib/axios";
 import type { User } from "@/types/user";
 
 import { UserEditDialog } from "./user-edit-dialog";
+import { UserResetPasswordDialog } from "./user-reset-password-dialog";
 
 export function UserRowActions({ user, onDeleted }: { user: User; onDeleted?: () => void }) {
-  const [dialog, setDialog] = useState<"edit" | "suspend" | "delete" | null>(null);
+  const [dialog, setDialog] = useState<"edit" | "reset" | "suspend" | "delete" | null>(null);
   const { data: me } = useCurrentUser();
   const suspend = useSuspendUser();
   const activate = useActivateUser();
@@ -44,7 +45,7 @@ export function UserRowActions({ user, onDeleted }: { user: User; onDeleted?: ()
             <MoreHorizontal className="size-4" />
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-48">
+        <DropdownMenuContent align="end" className="w-60">
           <DropdownMenuItem asChild>
             <Link href={`/dashboard/users/${user.id}`} prefetch={false}>
               <Eye />
@@ -54,6 +55,10 @@ export function UserRowActions({ user, onDeleted }: { user: User; onDeleted?: ()
           <DropdownMenuItem onClick={() => setDialog("edit")}>
             <Pencil />
             Modifier
+          </DropdownMenuItem>
+          <DropdownMenuItem disabled={isSelf} onClick={() => setDialog("reset")}>
+            <KeyRound />
+            Réinitialiser le mot de passe
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           {user.status === "suspended" ? (
@@ -83,6 +88,11 @@ export function UserRowActions({ user, onDeleted }: { user: User; onDeleted?: ()
       </DropdownMenu>
 
       <UserEditDialog user={user} open={dialog === "edit"} onOpenChange={(open) => !open && setDialog(null)} />
+      <UserResetPasswordDialog
+        user={user}
+        open={dialog === "reset"}
+        onOpenChange={(open) => !open && setDialog(null)}
+      />
 
       <ConfirmDialog
         open={dialog === "suspend"}

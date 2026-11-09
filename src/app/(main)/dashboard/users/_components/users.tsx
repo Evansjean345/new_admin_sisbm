@@ -20,6 +20,8 @@ import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/in
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { APP_CONFIG } from "@/config/app-config";
+import { useOrganizations } from "@/hooks/api/use-organizations";
 import { useRoles, useRolesMap } from "@/hooks/api/use-roles";
 import { useUsers } from "@/hooks/api/use-users";
 import { dataTableFeatures } from "@/lib/data-table-features";
@@ -32,6 +34,9 @@ import { getUsersColumns, UserAvatar } from "./users-columns";
 import { UsersTable } from "./users-table";
 
 const ALL = "all";
+
+/** Population affichée : §VI.2 écran 1 (collaborateurs SISBM) et écran 2 (utilisateurs clients). */
+type Population = "all" | "platform" | "clients";
 const EMPTY: User[] = [];
 
 export function Users() {
@@ -43,6 +48,11 @@ export function Users() {
   const [columnVisibility, setColumnVisibility] = React.useState<ColumnVisibilityState>({ search: false });
   const [view, setView] = React.useState<"list" | "grid">("list");
   const [createOpen, setCreateOpen] = React.useState(false);
+  const [population, setPopulation] = React.useState<Population>("all");
+
+  // Organisation de l'exploitant, repérée par son code.
+  const platformOrgs = useOrganizations({ search: APP_CONFIG.platformOrganizationCode, perPage: 10 });
+  const platformOrg = platformOrgs.data?.data.find((o) => o.code === APP_CONFIG.platformOrganizationCode);
 
   const roles = useRoles();
   const rolesMap = useRolesMap();
@@ -50,15 +60,25 @@ export function Users() {
     page: pagination.pageIndex + 1,
     perPage: pagination.pageSize,
     status: status === ALL ? undefined : status,
-    organizationId,
+    organizationId: population === "platform" ? platformOrg?.id : organizationId,
   });
+
+  // « Clients » exclut les comptes SISBM de la page affichée (l'API ne filtre pas par exclusion).
+  const pageUsers = users.data?.data ?? EMPTY;
+  const data = React.useMemo(
+    () =>
+      population === "clients" && platformOrg
+        ? pageUsers.filter((u) => u.organizationId !== platformOrg.id)
+        : pageUsers,
+    [population, platformOrg, pageUsers],
+  );
 
   const columns = React.useMemo(() => getUsersColumns(rolesMap), [rolesMap]);
 
   // Pagination côté serveur (meta de l'API), recherche et filtre de rôle côté client sur la page courante.
   const table = useTable({
     features: dataTableFeatures,
-    data: users.data?.data ?? EMPTY,
+    data,
     columns,
     state: { sorting, columnFilters, columnVisibility, pagination },
     getRowId: (row) => row.id,
@@ -94,9 +114,19 @@ export function Users() {
   return (
     <Card>
       <CardHeader className="border-b has-data-[slot=card-action]:grid-cols-1 md:has-data-[slot=card-action]:grid-cols-[1fr_auto]">
-        <CardTitle className="text-xl leading-none">Utilisateurs</CardTitle>
+        <CardTitle className="text-xl leading-none">
+          {population === "platform"
+            ? "Utilisateurs SISBM"
+            : population === "clients"
+              ? "Utilisateurs clients"
+              : "Utilisateurs"}
+        </CardTitle>
         <CardDescription className="max-w-sm leading-snug">
-          Tous les comptes de la plateforme, par organisation, et leurs accès.
+          {population === "platform"
+            ? "Collaborateurs de SISBM : administrateurs, opérateurs et support."
+            : population === "clients"
+              ? "Comptes des entreprises clientes, limités au périmètre de leur organisation."
+              : "Tous les comptes de la plateforme, par organisation, et leurs accès."}
         </CardDescription>
         <CardAction className="col-start-1 row-start-auto flex w-full flex-wrap justify-start gap-2 justify-self-stretch md:col-start-2 md:row-span-2 md:row-start-1 md:w-auto md:flex-nowrap md:justify-end md:justify-self-end">
           <InputGroup className="h-7 w-full md:w-64">
@@ -123,15 +153,36 @@ export function Users() {
         </CardAction>
       </CardHeader>
       <CardContent className="flex flex-col gap-4 px-0">
+        <div className="px-4">
+          <Tabs
+            value={population}
+            onValueChange={(v) => {
+              setPopulation(v as Population);
+              setPagination((p) => ({ ...p, pageIndex: 0 }));
+            }}
+          >
+            <TabsList>
+              <TabsTrigger value="all">Tous</TabsTrigger>
+              <TabsTrigger value="platform" disabled={!platformOrg}>
+                Collaborateurs SISBM
+              </TabsTrigger>
+              <TabsTrigger value="clients" disabled={!platformOrg}>
+                Utilisateurs clients
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+        </div>
         <div className="flex flex-wrap items-center justify-between gap-3 px-4">
           <div className="flex flex-wrap items-center gap-3">
-            <OrganizationFilter
-              value={organizationId}
-              onChange={(id) => {
-                setOrganizationId(id);
-                setPagination((p) => ({ ...p, pageIndex: 0 }));
-              }}
-            />
+            {population === "platform" ? null : (
+              <OrganizationFilter
+                value={organizationId}
+                onChange={(id) => {
+                  setOrganizationId(id);
+                  setPagination((p) => ({ ...p, pageIndex: 0 }));
+                }}
+              />
+            )}
             <Select
               value={roleFilter}
               onValueChange={(value) => table.getColumn("role")?.setFilterValue(value === ALL ? undefined : value)}
@@ -235,7 +286,11 @@ export function Users() {
         )}
       </CardContent>
 
-      <UserCreateDialog open={createOpen} onOpenChange={setCreateOpen} defaultOrganizationId={organizationId} />
+      <UserCreateDialog
+        open={createOpen}
+        onOpenChange={setCreateOpen}
+        defaultOrganizationId={population === "platform" ? platformOrg?.id : organizationId}
+      />
     </Card>
   );
 }

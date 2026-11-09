@@ -11,14 +11,19 @@ import { PageHeader } from "@/components/page-header";
 import { PaginationBar } from "@/components/pagination-bar";
 import { EmptyState, ErrorState, LoadingRows } from "@/components/query-state";
 import { StatusBadge } from "@/components/status-badge";
+import { clientStatusMeta } from "@/components/status-labels";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { useClientProfiles } from "@/hooks/api/use-client-profiles";
+import { useOffers } from "@/hooks/api/use-offers";
 import { useOrganizations } from "@/hooks/api/use-organizations";
+import { useSubscriptions } from "@/hooks/api/use-subscriptions";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { downloadCsv, formatDate } from "@/lib/format";
+import { CLIENT_STATUSES, type ClientStatus } from "@/types/client-profile";
 
 import { OrganizationFormDialog } from "./organization-form-dialog";
 import { OrganizationRowActions } from "./organization-row-actions";
@@ -35,6 +40,8 @@ const ALL = "all";
 export function Organizations() {
   const [search, setSearch] = useState("");
   const [activity, setActivity] = useState<string>(ALL);
+  const [commercialStatus, setCommercialStatus] = useState<ClientStatus | typeof ALL>(ALL);
+  const [offerId, setOfferId] = useState<string>(ALL);
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(25);
   const [createOpen, setCreateOpen] = useState(false);
@@ -47,7 +54,26 @@ export function Organizations() {
     isActive: activity === ALL ? undefined : activity === "active",
   });
 
-  const rows = organizations.data?.data ?? [];
+  const pageRows = organizations.data?.data ?? [];
+  const profiles = useClientProfiles(pageRows.map((o) => o.id));
+  const subscriptions = useSubscriptions({ perPage: 1000 });
+  const offers = useOffers({ perPage: 100 });
+
+  /** Souscriptions non résiliées par client, et clients ayant souscrit l'offre filtrée. */
+  const subscriptionCount = new Map<string, number>();
+  const withOffer = new Set<string>();
+  for (const s of subscriptions.data?.data ?? []) {
+    if (s.status === "terminated") continue;
+    subscriptionCount.set(s.organizationId, (subscriptionCount.get(s.organizationId) ?? 0) + 1);
+    if (s.offerId === offerId) withOffer.add(s.organizationId);
+  }
+
+  // Filtres statut commercial et offre : appliqués à la page affichée, faute de route serveur.
+  const rows = pageRows.filter(
+    (o) =>
+      (commercialStatus === ALL || profiles.data?.[o.id]?.status === commercialStatus) &&
+      (offerId === ALL || withOffer.has(o.id)),
+  );
   const total = organizations.data?.meta.total ?? 0;
   const inactive = rows.filter((organization) => !organization.isActive).length;
 
@@ -57,6 +83,10 @@ export function Organizations() {
       rows.map((organization) => ({
         code: organization.code,
         nom: organization.name,
+        raison_sociale: profiles.data?.[organization.id]?.legalName ?? "",
+        responsable: profiles.data?.[organization.id]?.manager.name ?? "",
+        souscriptions: subscriptionCount.get(organization.id) ?? 0,
+        statut_commercial: clientStatusMeta[profiles.data?.[organization.id]?.status ?? "active"].label,
         email: organization.contactEmail ?? "",
         telephone: organization.contactPhone ?? "",
         pays: organization.countryCode ?? "",
@@ -112,6 +142,38 @@ export function Organizations() {
           </InputGroupAddon>
         </InputGroup>
         <div className="flex flex-1 flex-wrap items-center gap-2 xl:justify-end">
+          <Select value={offerId} onValueChange={setOfferId}>
+            <SelectTrigger size="sm">
+              <span className="text-muted-foreground">Offre :</span>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent position="popper" align="end">
+              <SelectGroup>
+                <SelectItem value={ALL}>Toutes</SelectItem>
+                {(offers.data?.data ?? []).map((o) => (
+                  <SelectItem key={o.id} value={o.id}>
+                    {o.name}
+                  </SelectItem>
+                ))}
+              </SelectGroup>
+            </SelectContent>
+          </Select>
+          <Select value={commercialStatus} onValueChange={(v) => setCommercialStatus(v as ClientStatus | typeof ALL)}>
+            <SelectTrigger size="sm">
+              <span className="text-muted-foreground">Statut :</span>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent position="popper" align="end">
+              <SelectGroup>
+                <SelectItem value={ALL}>Tous</SelectItem>
+                {CLIENT_STATUSES.map((s) => (
+                  <SelectItem key={s} value={s}>
+                    {clientStatusMeta[s].label}
+                  </SelectItem>
+                ))}
+              </SelectGroup>
+            </SelectContent>
+          </Select>
           <Select
             value={activity}
             onValueChange={(value) => {
@@ -120,7 +182,7 @@ export function Organizations() {
             }}
           >
             <SelectTrigger size="sm">
-              <span className="text-muted-foreground">État :</span>
+              <span className="text-muted-foreground">Accès :</span>
               <SelectValue />
             </SelectTrigger>
             <SelectContent position="popper" align="end">
@@ -180,9 +242,10 @@ export function Organizations() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Entreprise</TableHead>
-                      <TableHead className="hidden md:table-cell">Contact</TableHead>
-                      <TableHead className="hidden lg:table-cell">Pays / fuseau</TableHead>
-                      <TableHead>État</TableHead>
+                      <TableHead className="hidden md:table-cell">Responsable / contact</TableHead>
+                      <TableHead className="hidden lg:table-cell">Souscriptions</TableHead>
+                      <TableHead>Statut</TableHead>
+                      <TableHead className="hidden sm:table-cell">Accès</TableHead>
                       <TableHead className="hidden xl:table-cell">Créée le</TableHead>
                       <TableHead className="w-12">
                         <span className="sr-only">Actions</span>
@@ -190,44 +253,56 @@ export function Organizations() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {rows.map((organization) => (
-                      <TableRow key={organization.id}>
-                        <TableCell>
-                          <Link
-                            href={`/dashboard/entreprises/${organization.id}`}
-                            prefetch={false}
-                            className="flex flex-col hover:underline"
-                          >
-                            <span className="font-medium">{organization.name}</span>
-                            <span className="font-mono text-muted-foreground text-xs">{organization.code}</span>
-                          </Link>
-                        </TableCell>
-                        <TableCell className="hidden md:table-cell">
-                          <div className="flex flex-col">
-                            <span>{organization.contactEmail ?? "—"}</span>
-                            <span className="text-muted-foreground text-xs">{organization.contactPhone ?? ""}</span>
-                          </div>
-                        </TableCell>
-                        <TableCell className="hidden text-muted-foreground lg:table-cell">
-                          {[organization.countryCode, organization.timezone].filter(Boolean).join(" · ")}
-                        </TableCell>
-                        <TableCell>
-                          {organization.isActive ? (
-                            <StatusBadge tone="success">Active</StatusBadge>
-                          ) : (
-                            <StatusBadge tone="orange">Désactivée</StatusBadge>
-                          )}
-                        </TableCell>
-                        <TableCell className="hidden text-muted-foreground xl:table-cell">
-                          {formatDate(organization.createdAt)}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex justify-end">
-                            <OrganizationRowActions organization={organization} />
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                    {rows.map((organization) => {
+                      const profile = profiles.data?.[organization.id];
+                      const commercial = clientStatusMeta[profile?.status ?? "active"];
+                      const managerContact = profile?.manager.name
+                        ? [profile.manager.phone, profile.manager.email]
+                        : [organization.contactPhone];
+                      return (
+                        <TableRow key={organization.id}>
+                          <TableCell>
+                            <Link
+                              href={`/dashboard/entreprises/${organization.id}`}
+                              prefetch={false}
+                              className="flex flex-col hover:underline"
+                            >
+                              <span className="font-medium">{organization.name}</span>
+                              <span className="font-mono text-muted-foreground text-xs">{organization.code}</span>
+                            </Link>
+                          </TableCell>
+                          <TableCell className="hidden md:table-cell">
+                            <div className="flex flex-col">
+                              <span>{profile?.manager.name ?? organization.contactEmail ?? "—"}</span>
+                              <span className="text-muted-foreground text-xs">
+                                {managerContact.filter(Boolean).join(" · ")}
+                              </span>
+                            </div>
+                          </TableCell>
+                          <TableCell className="hidden tabular-nums lg:table-cell">
+                            {subscriptions.isPending ? "…" : (subscriptionCount.get(organization.id) ?? 0)}
+                          </TableCell>
+                          <TableCell>
+                            {profile ? <StatusBadge tone={commercial.tone}>{commercial.label}</StatusBadge> : "…"}
+                          </TableCell>
+                          <TableCell className="hidden sm:table-cell">
+                            {organization.isActive ? (
+                              <StatusBadge tone="success">Active</StatusBadge>
+                            ) : (
+                              <StatusBadge tone="orange">Désactivée</StatusBadge>
+                            )}
+                          </TableCell>
+                          <TableCell className="hidden text-muted-foreground xl:table-cell">
+                            {formatDate(organization.createdAt)}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex justify-end">
+                              <OrganizationRowActions organization={organization} />
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
                   </TableBody>
                 </Table>
               </div>

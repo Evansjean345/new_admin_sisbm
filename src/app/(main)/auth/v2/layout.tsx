@@ -13,7 +13,7 @@ export default function Layout({ children }: Readonly<{ children: ReactNode }>) 
       <div className="grid h-dvh justify-center p-2 lg:grid-cols-2">
         <div className="relative order-2 hidden h-full overflow-hidden rounded-3xl bg-primary lg:flex">
           {/* Image de fond */}
-          <Image src={Background} alt="" fill priority placeholder="blur" className="object-cover" />
+          <Image src={Background} alt="" fill sizes="50vw" priority placeholder="blur" className="object-cover" />
           {/* Overlay pour la lisibilité du texte */}
           <div className="absolute inset-0 bg-black/25" />
 

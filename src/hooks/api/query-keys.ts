@@ -3,6 +3,8 @@ import type { AuditLogListParams } from "@/types/audit";
 import type { DeviceListParams } from "@/types/device";
 import type { DriverListParams } from "@/types/driver";
 import type { GroupKind, GroupListParams } from "@/types/group";
+import type { OfferListParams } from "@/types/offer";
+import type { SubscriptionListParams } from "@/types/subscription";
 import type { OrganizationListParams } from "@/types/organization";
 import type { ScheduleHistoryParams, ScheduleListParams } from "@/types/schedule";
 import type { UserListParams } from "@/types/user";
@@ -27,6 +29,8 @@ export const queryKeys = {
   },
   roles: {
     all: ["roles"] as const,
+    /** Rôles traduits dans le modèle module × 7 actions, rôles personnalisés inclus. */
+    definitions: ["roles", "definitions"] as const,
   },
   users: {
     all: ["users"] as const,
@@ -68,6 +72,32 @@ export const queryKeys = {
     vehicleStatus: (vehicleId: string) => ["schedules", "vehicle-status", vehicleId] as const,
     ofGroup: (groupId: string) => ["schedules", "group", groupId] as const,
     history: (params: ScheduleHistoryParams) => ["schedules", "history", params] as const,
+  },
+  /** Catalogue des offres (service simulé tant que l'API n'existe pas). */
+  offers: {
+    all: ["offers"] as const,
+    features: ["offers", "features"] as const,
+    list: (params: OfferListParams) => ["offers", "list", params] as const,
+    detail: (id: string) => ["offers", "detail", id] as const,
+  },
+  /** Fiches commerciales des clients (service simulé). */
+  clientProfiles: {
+    all: ["client-profiles"] as const,
+    detail: (organizationId: string) => ["client-profiles", "detail", organizationId] as const,
+    many: (organizationIds: string[]) => ["client-profiles", "many", organizationIds] as const,
+  },
+  /** Souscriptions (service simulé) : `availability` = véhicules déjà affectés. */
+  subscriptions: {
+    all: ["subscriptions"] as const,
+    list: (params: SubscriptionListParams) => ["subscriptions", "list", params] as const,
+    detail: (id: string) => ["subscriptions", "detail", id] as const,
+    availability: ["subscriptions", "availability"] as const,
+    vehicleHistory: (vehicleId: string) => ["subscriptions", "vehicle-history", vehicleId] as const,
+  },
+  /** Client exploitant d'un véhicule (service simulé). */
+  vehicleOperators: {
+    all: ["vehicle-operators"] as const,
+    detail: (vehicleId: string) => ["vehicle-operators", vehicleId] as const,
   },
   drivers: {
     all: ["drivers"] as const,

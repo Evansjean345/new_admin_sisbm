@@ -26,6 +26,7 @@ import { VehicleRowActions } from "../../_components/vehicle-row-actions";
 import { PositionCard } from "./position-card";
 import { VehicleDriversCard } from "./vehicle-drivers-card";
 import { VehicleScheduleCard } from "./vehicle-schedule-card";
+import { VehicleSubscriptionCard } from "./vehicle-subscription-card";
 
 export function VehicleDetailView({ id }: { id: string }) {
   const router = useRouter();
@@ -134,6 +135,7 @@ export function VehicleDetailView({ id }: { id: string }) {
         </div>
 
         <div className="flex flex-col gap-4">
+          <VehicleSubscriptionCard vehicle={v} />
           <Card>
             <CardHeader className="border-b">
               <CardTitle>Tracker monté</CardTitle>

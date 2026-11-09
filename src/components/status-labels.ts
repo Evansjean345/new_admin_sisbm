@@ -1,6 +1,9 @@
 import type { StatusTone } from "@/components/status-badge";
+import type { ClientStatus, ClientType } from "@/types/client-profile";
 import type { CommandStatus } from "@/types/command";
 import type { DeviceStatus } from "@/types/device";
+import type { OfferPeriodicity, OfferStatus } from "@/types/offer";
+import type { SubscriptionStatus } from "@/types/subscription";
 import type { UserStatus } from "@/types/user";
 import type { ConnectionState, VehicleStatus, VehicleType } from "@/types/vehicle";
 
@@ -25,6 +28,47 @@ export const vehicleStatusMeta: Record<VehicleStatus, Meta> = {
   maintenance: { label: "Maintenance", tone: "warning" },
   inactive: { label: "Inactif", tone: "orange" },
   archived: { label: "Archivé", tone: "neutral" },
+};
+
+export const offerStatusMeta: Record<OfferStatus, Meta> = {
+  draft: { label: "Brouillon", tone: "neutral" },
+  active: { label: "Commercialisée", tone: "success" },
+  retired: { label: "Retirée", tone: "orange" },
+};
+
+export const clientStatusMeta: Record<ClientStatus, Meta> = {
+  prospect: { label: "Prospect", tone: "info" },
+  active: { label: "Actif", tone: "success" },
+  suspended: { label: "Suspendu", tone: "orange" },
+  terminated: { label: "Résilié", tone: "danger" },
+  archived: { label: "Archivé", tone: "neutral" },
+};
+
+export const clientTypeLabels: Record<ClientType, string> = {
+  owner: "Client propriétaire",
+  operator: "Client exploitant",
+};
+
+export const subscriptionStatusMeta: Record<SubscriptionStatus, Meta> = {
+  draft: { label: "Brouillon", tone: "neutral" },
+  active: { label: "Active", tone: "success" },
+  suspended: { label: "Suspendue", tone: "orange" },
+  terminated: { label: "Résiliée", tone: "danger" },
+};
+
+export const offerPeriodicityLabels: Record<OfferPeriodicity, string> = {
+  monthly: "Mensuelle",
+  quarterly: "Trimestrielle",
+  semiannual: "Semestrielle",
+  annual: "Annuelle",
+};
+
+/** Suffixe court pour un tarif : « 15 000 XOF / mois ». */
+export const offerPeriodicityShort: Record<OfferPeriodicity, string> = {
+  monthly: "mois",
+  quarterly: "trimestre",
+  semiannual: "semestre",
+  annual: "an",
 };
 
 export const vehicleTypeLabels: Record<VehicleType, string> = {

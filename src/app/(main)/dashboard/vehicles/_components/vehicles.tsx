@@ -48,6 +48,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { useVehicleAvailability } from "@/hooks/api/use-subscriptions";
 import { useVehicles } from "@/hooks/api/use-vehicles";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { downloadCsv, formatDate, formatNumber } from "@/lib/format";
@@ -76,6 +77,8 @@ export function Vehicles() {
   });
 
   const rows = vehicles.data?.data ?? [];
+  // Offre actuelle de chaque véhicule (souscriptions simulées tant que l'API ne les expose pas).
+  const offers = useVehicleAvailability();
 
   /*
   Export CSV : exporter les données au format CSV , format Excel
@@ -91,6 +94,8 @@ export function Vehicles() {
         modele: v.model ?? "",
         annee: v.year ?? "",
         type: vehicleTypeLabels[v.vehicleType] ?? v.vehicleType,
+        offre: offers.data?.[v.id]?.offerName ?? "",
+        souscription: offers.data?.[v.id]?.reference ?? "",
         statut: vehicleStatusMeta[v.status]?.label ?? v.status,
         limite_kmh: formatNumber(v.speedLimitKph),
         kilometrage: formatNumber(v.odometerKm),
@@ -221,6 +226,9 @@ export function Vehicles() {
                       <TableHead className="hidden md:table-cell">
                         Organisation
                       </TableHead>
+                      <TableHead className="hidden lg:table-cell">
+                        Offre
+                      </TableHead>
                       <TableHead className="hidden md:table-cell">
                         Marque / modèle
                       </TableHead>
@@ -269,6 +277,24 @@ export function Vehicles() {
                           </TableCell>
                           <TableCell className="hidden max-w-48 md:table-cell">
                             <OrganizationCell organization={v.organization} />
+                          </TableCell>
+                          <TableCell className="hidden lg:table-cell">
+                            {offers.data?.[v.id] ? (
+                              <Link
+                                href={`/dashboard/subscriptions/${offers.data[v.id].subscriptionId}`}
+                                prefetch={false}
+                                className="flex flex-col hover:underline"
+                              >
+                                <span>{offers.data[v.id].offerName}</span>
+                                <span className="font-mono text-muted-foreground text-xs">
+                                  {offers.data[v.id].reference}
+                                </span>
+                              </Link>
+                            ) : (
+                              <span className="text-muted-foreground">
+                                {offers.isPending ? "…" : "Aucune"}
+                              </span>
+                            )}
                           </TableCell>
                           <TableCell className="hidden md:table-cell">
                             <div className="flex flex-col">
