@@ -20,11 +20,16 @@ import { AuditLogPanel } from "../../../_components/audit/audit-log-panel";
 import { OrganizationFormDialog } from "../../_components/organization-form-dialog";
 import { OrganizationRowActions } from "../../_components/organization-row-actions";
 import { ClientProfileCard } from "./client-profile-card";
+import { ClientRubricsCard, OrganizationBillingCard, OrganizationClientOffersCard } from "./organization-billing-cards";
 import { OrganizationRolesCard } from "./organization-roles-card";
 import { OrganizationSubscriptionsCard } from "./organization-subscriptions-card";
 import { OrganizationUsersCard } from "./organization-users-card";
+import { OrganizationVehiclesCard } from "./organization-vehicles-card";
 
-/** Détail d'une entreprise : identité, comptes, rôles et journal d'audit. */
+/**
+ * Fiche client (§III.1 et §III.3) : identité commerciale, souscriptions, véhicules, facturation,
+ * comptes et offres attribuées, rôles, journal ; accès direct aux rubriques de son espace.
+ */
 export function OrganizationDetail({ id }: { id: string }) {
   const organization = useOrganization(id);
   const [editOpen, setEditOpen] = useState(false);
@@ -45,7 +50,7 @@ export function OrganizationDetail({ id }: { id: string }) {
         <Button variant="ghost" size="sm" asChild className="-ml-2">
           <Link href="/dashboard/entreprises" prefetch={false}>
             <ArrowLeft data-icon="inline-start" />
-            Entreprises
+            Gestion des clients
           </Link>
         </Button>
       </div>
@@ -101,11 +106,16 @@ export function OrganizationDetail({ id }: { id: string }) {
         />
       </div>
 
+      <ClientRubricsCard organizationId={data.id} />
+
       <Tabs defaultValue="identity">
-        <TabsList>
+        <TabsList className="!h-auto flex-wrap justify-start">
           <TabsTrigger value="identity">Identité</TabsTrigger>
           <TabsTrigger value="subscriptions">Souscriptions</TabsTrigger>
+          <TabsTrigger value="vehicles">Véhicules</TabsTrigger>
+          <TabsTrigger value="billing">Facturation</TabsTrigger>
           <TabsTrigger value="users">Comptes</TabsTrigger>
+          <TabsTrigger value="offers">Offres attribuées</TabsTrigger>
           <TabsTrigger value="roles">Rôles</TabsTrigger>
           <TabsTrigger value="audit">Journal</TabsTrigger>
         </TabsList>
@@ -138,6 +148,18 @@ export function OrganizationDetail({ id }: { id: string }) {
 
         <TabsContent value="subscriptions" className="pt-4">
           <OrganizationSubscriptionsCard organizationId={data.id} />
+        </TabsContent>
+
+        <TabsContent value="vehicles" className="pt-4">
+          <OrganizationVehiclesCard organizationId={data.id} />
+        </TabsContent>
+
+        <TabsContent value="billing" className="pt-4">
+          <OrganizationBillingCard organizationId={data.id} />
+        </TabsContent>
+
+        <TabsContent value="offers" className="pt-4">
+          <OrganizationClientOffersCard organizationId={data.id} />
         </TabsContent>
 
         <TabsContent value="users" className="pt-4">
