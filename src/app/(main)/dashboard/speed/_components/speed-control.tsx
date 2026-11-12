@@ -80,8 +80,8 @@ export function SpeedControl({ organizationId: scoped }: { organizationId?: stri
         <Gauge />
         <AlertTitle>Ordre de priorité des limites</AlertTitle>
         <AlertDescription>
-          Appliqué ici : véhicule, puis zone, puis limite globale (la plus précise l'emporte). Décision SISBM à valider (§15). Le
-          bridage nécessite un boîtier compatible.
+          Appliqué ici : véhicule, puis zone, puis limite globale (la plus précise l'emporte). Décision SISBM à valider
+          (§15). Le bridage nécessite un boîtier compatible.
         </AlertDescription>
       </Alert>
 
@@ -123,7 +123,11 @@ export function SpeedControl({ organizationId: scoped }: { organizationId?: stri
                       <TableCell>
                         {SCOPE_LABELS[p.scope]}
                         <span className="block text-muted-foreground text-xs">
-                          {p.scope === "zone" ? zoneName(p.zoneId) : p.scope === "vehicle" ? `${p.vehicleIds.length} véhicule(s)` : ""}
+                          {p.scope === "zone"
+                            ? zoneName(p.zoneId)
+                            : p.scope === "vehicle"
+                              ? `${p.vehicleIds.length} véhicule(s)`
+                              : ""}
                         </span>
                       </TableCell>
                       <TableCell className="text-right font-semibold tabular-nums">{p.limitKph} km/h</TableCell>
@@ -150,7 +154,12 @@ export function SpeedControl({ organizationId: scoped }: { organizationId?: stri
                         />
                       </TableCell>
                       <TableCell>
-                        <Button variant="ghost" size="icon-sm" aria-label={`Modifier ${p.name}`} onClick={() => setEditing({ open: true, policy: p })}>
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
+                          aria-label={`Modifier ${p.name}`}
+                          onClick={() => setEditing({ open: true, policy: p })}
+                        >
                           <Pencil />
                         </Button>
                       </TableCell>
@@ -189,8 +198,11 @@ function SpeedPolicyDialog({
 }) {
   const [form, setForm] = useState<SpeedPolicyPayload | null>(null);
   const save = useSaveSpeedPolicy();
-  const zones = useGeofences(form?.organizationId || undefined);
-  const vehicles = useVehicles({ organizationId: form?.organizationId || undefined, perPage: 100 }, { enabled: Boolean(form?.organizationId) });
+  const zones = useGeofences(form?.organizationId ? form.organizationId : undefined);
+  const vehicles = useVehicles(
+    { organizationId: form?.organizationId ? form.organizationId : undefined, perPage: 100 },
+    { enabled: Boolean(form?.organizationId) },
+  );
 
   useEffect(() => {
     if (!open) return;
@@ -215,7 +227,8 @@ function SpeedPolicyDialog({
   }, [open, policy, organizationId]);
 
   if (!form) return null;
-  const set = <K extends keyof SpeedPolicyPayload>(k: K, v: SpeedPolicyPayload[K]) => setForm((f) => (f ? { ...f, [k]: v } : f));
+  const set = <K extends keyof SpeedPolicyPayload>(k: K, v: SpeedPolicyPayload[K]) =>
+    setForm((f) => (f ? { ...f, [k]: v } : f));
   const num = (v: string) => Math.max(0, Number(v) || 0);
 
   return (
@@ -231,12 +244,22 @@ function SpeedPolicyDialog({
           {lockOrganization ? null : (
             <Field className="gap-1.5">
               <FieldLabel htmlFor="sp-org">Client</FieldLabel>
-              <OrganizationSelect id="sp-org" className="w-full" value={form.organizationId || undefined} onChange={(id) => set("organizationId", id ?? "")} />
+              <OrganizationSelect
+                id="sp-org"
+                className="w-full"
+                value={form.organizationId || undefined}
+                onChange={(id) => set("organizationId", id ?? "")}
+              />
             </Field>
           )}
           <Field className="gap-1.5">
             <FieldLabel htmlFor="sp-name">Nom</FieldLabel>
-            <Input id="sp-name" value={form.name} onChange={(e) => set("name", e.target.value)} placeholder="Ex. : Limite ville 50 km/h" />
+            <Input
+              id="sp-name"
+              value={form.name}
+              onChange={(e) => set("name", e.target.value)}
+              placeholder="Ex. : Limite ville 50 km/h"
+            />
           </Field>
           <Field className="gap-1.5">
             <FieldLabel htmlFor="sp-scope">Portée</FieldLabel>
@@ -277,7 +300,10 @@ function SpeedPolicyDialog({
           {form.scope === "vehicle" ? (
             <Field className="gap-1.5">
               <FieldLabel htmlFor="sp-vehicles">Véhicules ({form.vehicleIds.length})</FieldLabel>
-              <Select value="" onValueChange={(v) => !form.vehicleIds.includes(v) && set("vehicleIds", [...form.vehicleIds, v])}>
+              <Select
+                value=""
+                onValueChange={(v) => !form.vehicleIds.includes(v) && set("vehicleIds", [...form.vehicleIds, v])}
+              >
                 <SelectTrigger id="sp-vehicles" className="w-full">
                   <SelectValue placeholder="Ajouter un véhicule" />
                 </SelectTrigger>
@@ -301,15 +327,30 @@ function SpeedPolicyDialog({
           <div className="grid grid-cols-3 gap-3">
             <Field className="gap-1.5">
               <FieldLabel htmlFor="sp-limit">Limite (km/h)</FieldLabel>
-              <Input id="sp-limit" type="number" value={form.limitKph} onChange={(e) => set("limitKph", num(e.target.value))} />
+              <Input
+                id="sp-limit"
+                type="number"
+                value={form.limitKph}
+                onChange={(e) => set("limitKph", num(e.target.value))}
+              />
             </Field>
             <Field className="gap-1.5">
               <FieldLabel htmlFor="sp-tol">Tolérance</FieldLabel>
-              <Input id="sp-tol" type="number" value={form.toleranceKph} onChange={(e) => set("toleranceKph", num(e.target.value))} />
+              <Input
+                id="sp-tol"
+                type="number"
+                value={form.toleranceKph}
+                onChange={(e) => set("toleranceKph", num(e.target.value))}
+              />
             </Field>
             <Field className="gap-1.5">
               <FieldLabel htmlFor="sp-dur">Durée (s)</FieldLabel>
-              <Input id="sp-dur" type="number" value={form.minDurationSeconds} onChange={(e) => set("minDurationSeconds", num(e.target.value))} />
+              <Input
+                id="sp-dur"
+                type="number"
+                value={form.minDurationSeconds}
+                onChange={(e) => set("minDurationSeconds", num(e.target.value))}
+              />
             </Field>
           </div>
           <Field className="gap-1.5">

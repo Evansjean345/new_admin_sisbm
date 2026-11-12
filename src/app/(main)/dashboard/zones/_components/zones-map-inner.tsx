@@ -65,14 +65,23 @@ function Shape({ zone, dashed, onSelect }: { zone: MapZone; dashed?: boolean; on
   const handlers = onSelect ? { click: () => onSelect(zone.id) } : undefined;
   if (zone.shape === "circle" && zone.center) {
     return (
-      <Circle center={[zone.center.lat, zone.center.lng]} radius={zone.radiusM ?? 100} pathOptions={options} eventHandlers={handlers}>
+      <Circle
+        center={[zone.center.lat, zone.center.lng]}
+        radius={zone.radiusM ?? 100}
+        pathOptions={options}
+        eventHandlers={handlers}
+      >
         <Tooltip>{zone.name}</Tooltip>
       </Circle>
     );
   }
   if (zone.points.length >= 2) {
     return (
-      <Polygon positions={zone.points.map((p) => [p.lat, p.lng] as [number, number])} pathOptions={options} eventHandlers={handlers}>
+      <Polygon
+        positions={zone.points.map((p) => [p.lat, p.lng] as [number, number])}
+        pathOptions={options}
+        eventHandlers={handlers}
+      >
         <Tooltip>{zone.name}</Tooltip>
       </Polygon>
     );
@@ -103,7 +112,11 @@ export default function ZonesMapInner({ zones, draft, onPick, selectedId, onSele
               ))
             : null}
           {draft.shape === "circle" && draft.center ? (
-            <CircleMarker center={[draft.center.lat, draft.center.lng]} radius={4} pathOptions={{ color: draft.color }} />
+            <CircleMarker
+              center={[draft.center.lat, draft.center.lng]}
+              radius={4}
+              pathOptions={{ color: draft.color }}
+            />
           ) : null}
         </>
       ) : null}

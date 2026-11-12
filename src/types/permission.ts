@@ -54,7 +54,8 @@ export const permissionActionHints: Record<PermissionAction, string> = {
   read: "Voir une liste, une fiche, un détail ou un indicateur sans modifier les données.",
   create: "Créer un objet métier : client, facture, règle, incident, planning…",
   update: "Modifier les champs ou paramètres d'un objet existant.",
-  delete: "Supprimer ou désactiver un objet quand les règles métier l'autorisent (désactivation et historisation privilégiées).",
+  delete:
+    "Supprimer ou désactiver un objet quand les règles métier l'autorisent (désactivation et historisation privilégiées).",
   export: "Exporter des données ou rapports (PDF, Excel).",
   validate: "Valider une opération lorsqu'un processus prévoit une validation distincte.",
   execute: "Déclencher une action opérationnelle ou une commande GPS (arrêt moteur, limiteur).",

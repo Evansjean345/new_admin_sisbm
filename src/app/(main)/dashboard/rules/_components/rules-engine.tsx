@@ -74,7 +74,9 @@ const ACTION_LABELS: Record<RuleActionType, { label: string; placeholder: string
 
 /** Phrase lisible d'une règle : « Quand Excès de vitesse et Vitesse supérieur à 110 → … ». */
 function ruleSentence(r: Pick<Rule, "trigger" | "conditions" | "actions">): string {
-  const conds = r.conditions.map((c) => `${FIELD_LABELS[c.field].label.toLowerCase()} ${OPERATOR_LABELS[c.operator]} ${c.value}`);
+  const conds = r.conditions.map(
+    (c) => `${FIELD_LABELS[c.field].label.toLowerCase()} ${OPERATOR_LABELS[c.operator]} ${c.value}`,
+  );
   const acts = r.actions.map((a) => ACTION_LABELS[a.type].label.toLowerCase());
   return `Quand « ${eventTypeLabels[r.trigger]} »${conds.length ? ` et ${conds.join(" et ")}` : ""}, alors ${acts.join(", ") || "rien"}.`;
 }
@@ -114,13 +116,13 @@ export function RulesEngine({ organizationId: scoped }: { organizationId?: strin
           }
         />
       )}
-      {scoped ? null : (
-        <Alert>
-          <Workflow />
-          <AlertTitle>Données de démonstration</AlertTitle>
-          <AlertDescription>Règles simulées ; leur évaluation sur les événements GPS sera faite côté serveur.</AlertDescription>
-        </Alert>
-      )}
+      <Alert>
+        <Workflow />
+        <AlertTitle>Données de démonstration</AlertTitle>
+        <AlertDescription>
+          Règles simulées ; leur évaluation sur les événements GPS sera faite côté serveur.
+        </AlertDescription>
+      </Alert>
 
       {rules.isPending ? (
         <LoadingRows rows={4} />
@@ -170,7 +172,12 @@ export function RulesEngine({ organizationId: scoped }: { organizationId?: strin
                         )
                       }
                     />
-                    <Button variant="ghost" size="icon-sm" aria-label={`Modifier ${r.name}`} onClick={() => setEditing({ open: true, rule: r })}>
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      aria-label={`Modifier ${r.name}`}
+                      onClick={() => setEditing({ open: true, rule: r })}
+                    >
                       <Pencil />
                     </Button>
                   </div>
@@ -243,7 +250,12 @@ function RuleDialog({
             {lockOrganization ? null : (
               <Field className="gap-1.5 sm:col-span-2">
                 <FieldLabel htmlFor="rule-org">Client</FieldLabel>
-                <OrganizationSelect id="rule-org" className="w-full" value={form.organizationId || undefined} onChange={(id) => set("organizationId", id ?? "")} />
+                <OrganizationSelect
+                  id="rule-org"
+                  className="w-full"
+                  value={form.organizationId || undefined}
+                  onChange={(id) => set("organizationId", id ?? "")}
+                />
               </Field>
             )}
             <Field className="gap-1.5">
@@ -269,7 +281,12 @@ function RuleDialog({
             </Field>
             <Field className="gap-1.5 sm:col-span-2">
               <FieldLabel htmlFor="rule-desc">Description</FieldLabel>
-              <Textarea id="rule-desc" rows={2} value={form.description ?? ""} onChange={(e) => set("description", e.target.value || null)} />
+              <Textarea
+                id="rule-desc"
+                rows={2}
+                value={form.description ?? ""}
+                onChange={(e) => set("description", e.target.value || null)}
+              />
             </Field>
           </div>
 
@@ -297,7 +314,12 @@ function RuleDialog({
               <div key={c.id} className="grid grid-cols-[1fr_1fr_1fr_auto] gap-2">
                 <Select
                   value={c.field}
-                  onValueChange={(v) => set("conditions", form.conditions.map((x, j) => (j === i ? { ...x, field: v as RuleField } : x)))}
+                  onValueChange={(v) =>
+                    set(
+                      "conditions",
+                      form.conditions.map((x, j) => (j === i ? { ...x, field: v as RuleField } : x)),
+                    )
+                  }
                 >
                   <SelectTrigger className="w-full" aria-label="Critère">
                     <SelectValue />
@@ -314,7 +336,12 @@ function RuleDialog({
                 </Select>
                 <Select
                   value={c.operator}
-                  onValueChange={(v) => set("conditions", form.conditions.map((x, j) => (j === i ? { ...x, operator: v as RuleOperator } : x)))}
+                  onValueChange={(v) =>
+                    set(
+                      "conditions",
+                      form.conditions.map((x, j) => (j === i ? { ...x, operator: v as RuleOperator } : x)),
+                    )
+                  }
                 >
                   <SelectTrigger className="w-full" aria-label="Opérateur">
                     <SelectValue />
@@ -333,9 +360,24 @@ function RuleDialog({
                   aria-label="Valeur"
                   value={c.value}
                   placeholder={FIELD_LABELS[c.field].placeholder}
-                  onChange={(e) => set("conditions", form.conditions.map((x, j) => (j === i ? { ...x, value: e.target.value } : x)))}
+                  onChange={(e) =>
+                    set(
+                      "conditions",
+                      form.conditions.map((x, j) => (j === i ? { ...x, value: e.target.value } : x)),
+                    )
+                  }
                 />
-                <Button variant="ghost" size="icon" aria-label="Retirer la condition" onClick={() => set("conditions", form.conditions.filter((_, j) => j !== i))}>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  aria-label="Retirer la condition"
+                  onClick={() =>
+                    set(
+                      "conditions",
+                      form.conditions.filter((_, j) => j !== i),
+                    )
+                  }
+                >
                   <Trash2 />
                 </Button>
               </div>
@@ -344,7 +386,9 @@ function RuleDialog({
               variant="outline"
               size="sm"
               className="w-fit"
-              onClick={() => set("conditions", [...form.conditions, { id: mockId(), field: "speed", operator: "gt", value: "" }])}
+              onClick={() =>
+                set("conditions", [...form.conditions, { id: mockId(), field: "speed", operator: "gt", value: "" }])
+              }
             >
               <Plus data-icon="inline-start" />
               Ajouter une condition
@@ -357,7 +401,12 @@ function RuleDialog({
               <div key={a.id} className="grid grid-cols-[1fr_1.4fr_auto] gap-2">
                 <Select
                   value={a.type}
-                  onValueChange={(v) => set("actions", form.actions.map((x, j) => (j === i ? { ...x, type: v as RuleActionType } : x)))}
+                  onValueChange={(v) =>
+                    set(
+                      "actions",
+                      form.actions.map((x, j) => (j === i ? { ...x, type: v as RuleActionType } : x)),
+                    )
+                  }
                 >
                   <SelectTrigger className="w-full" aria-label="Action">
                     <SelectValue />
@@ -376,14 +425,34 @@ function RuleDialog({
                   aria-label="Paramètre de l'action"
                   value={a.value}
                   placeholder={ACTION_LABELS[a.type].placeholder}
-                  onChange={(e) => set("actions", form.actions.map((x, j) => (j === i ? { ...x, value: e.target.value } : x)))}
+                  onChange={(e) =>
+                    set(
+                      "actions",
+                      form.actions.map((x, j) => (j === i ? { ...x, value: e.target.value } : x)),
+                    )
+                  }
                 />
-                <Button variant="ghost" size="icon" aria-label="Retirer l'action" onClick={() => set("actions", form.actions.filter((_, j) => j !== i))}>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  aria-label="Retirer l'action"
+                  onClick={() =>
+                    set(
+                      "actions",
+                      form.actions.filter((_, j) => j !== i),
+                    )
+                  }
+                >
                   <Trash2 />
                 </Button>
               </div>
             ))}
-            <Button variant="outline" size="sm" className="w-fit" onClick={() => set("actions", [...form.actions, { id: mockId(), type: "notify", value: "" }])}>
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-fit"
+              onClick={() => set("actions", [...form.actions, { id: mockId(), type: "notify", value: "" }])}
+            >
               <Plus data-icon="inline-start" />
               Ajouter une action
             </Button>

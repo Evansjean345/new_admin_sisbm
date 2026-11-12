@@ -183,19 +183,19 @@ export const sidebarItems: NavGroup[] = [
       {
         id: "zone",
         title: "Zones géographiques",
-        url: soon("Zones géographiques"),
+        url: "/dashboard/zones",
         icon: MapIcon,
       },
       {
         id: "speed",
         title: "Contrôle de vitesse",
-        url: soon("Contrôle de vitesse"),
+        url: "/dashboard/speed",
         icon: Gauge,
       },
       {
         id: "rules",
         title: "Moteur de règles",
-        url: soon("Moteur de règles"),
+        url: "/dashboard/rules",
         icon: Workflow,
       },
       {

@@ -26,28 +26,15 @@ import { useOrganization } from "@/hooks/api/use-organizations";
 import { useSchedules } from "@/hooks/api/use-schedules";
 import { useSubscriptions } from "@/hooks/api/use-subscriptions";
 
-import { Drivers } from "../../../../driver/_components/drivers";
-import { Fleet } from "../../../../fleet/_components/fleet";
 import { Schedules } from "../../../../clock/_components/schedules";
+import { Drivers } from "../../../../driver/_components/drivers";
+import { RulesEngine } from "../../../../rules/_components/rules-engine";
+import { SpeedControl } from "../../../../speed/_components/speed-control";
+import { Zones } from "../../../../zones/_components/zones";
 
-type WorkspaceTab = "overview" | "supervision" | "schedules" | "zones" | "speed" | "rules" | "drivers";
+type WorkspaceTab = "overview" | "schedules" | "zones" | "speed" | "rules" | "drivers";
 
-function ComingSoon({ title, description }: { title: string; description: string }) {
-  return (
-    <Card>
-      <CardContent className="flex flex-col items-center gap-3 py-12 text-center">
-        <div className="flex size-12 items-center justify-center rounded-xl border bg-muted text-muted-foreground">
-          <Construction className="size-6" />
-        </div>
-        <h2 className="font-semibold text-lg">{title}</h2>
-        <p className="max-w-lg text-muted-foreground text-sm">{description}</p>
-        <p className="text-muted-foreground text-xs">
-          Cette rubrique est prête dans l’espace du client, mais son module fonctionnel reste à développer.
-        </p>
-      </CardContent>
-    </Card>
-  );
-}
+const tabTriggerClass = "flex-none text-white/90 hover:text-white data-[state=active]:text-foreground";
 
 function ClientOverview({ organizationId, vehicleCount }: { organizationId: string; vehicleCount: number }) {
   const subscriptions = useSubscriptions({ organizationId, status: "active", perPage: 1 });
@@ -141,31 +128,27 @@ export function ClientWorkspace({ organizationId }: { organizationId: string }) 
 
       <Tabs value={tab} onValueChange={(value) => setTab(value as WorkspaceTab)}>
         <TabsList className="!h-auto !w-full flex-wrap justify-start">
-          <TabsTrigger value="overview" className="flex-none">
+          <TabsTrigger value="overview" className={tabTriggerClass}>
             <LayoutDashboard data-icon="inline-start" />
             Tableau de bord
           </TabsTrigger>
-          <TabsTrigger value="supervision" className="flex-none">
-            <MapPinned data-icon="inline-start" />
-            Supervision
-          </TabsTrigger>
-          <TabsTrigger value="schedules" className="flex-none">
+          <TabsTrigger value="schedules" className={tabTriggerClass}>
             <CalendarClock data-icon="inline-start" />
             Gestion des horaires
           </TabsTrigger>
-          <TabsTrigger value="zones" className="flex-none">
+          <TabsTrigger value="zones" className={tabTriggerClass}>
             <MapPinned data-icon="inline-start" />
             Zones géographiques
           </TabsTrigger>
-          <TabsTrigger value="speed" className="flex-none">
+          <TabsTrigger value="speed" className={tabTriggerClass}>
             <Gauge data-icon="inline-start" />
             Contrôle de vitesse
           </TabsTrigger>
-          <TabsTrigger value="rules" className="flex-none">
+          <TabsTrigger value="rules" className={tabTriggerClass}>
             <Workflow data-icon="inline-start" />
             Moteur de règles
           </TabsTrigger>
-          <TabsTrigger value="drivers" className="flex-none">
+          <TabsTrigger value="drivers" className={tabTriggerClass}>
             <UsersRound data-icon="inline-start" />
             Conducteurs
           </TabsTrigger>
@@ -174,29 +157,17 @@ export function ClientWorkspace({ organizationId }: { organizationId: string }) 
         <TabsContent value="overview" className="pt-4">
           <ClientOverview organizationId={organizationId} vehicleCount={client.stats.vehicles} />
         </TabsContent>
-        <TabsContent value="supervision" className="pt-4">
-          <Fleet organizationId={organizationId} />
-        </TabsContent>
         <TabsContent value="schedules" className="pt-4">
           <Schedules organizationId={organizationId} />
         </TabsContent>
         <TabsContent value="zones" className="pt-4">
-          <ComingSoon
-            title="Zones géographiques"
-            description="La gestion des zones n’est pas encore disponible pour les organisations clientes."
-          />
+          <Zones organizationId={organizationId} />
         </TabsContent>
         <TabsContent value="speed" className="pt-4">
-          <ComingSoon
-            title="Contrôle de vitesse"
-            description="Les réglages et alertes de vitesse ne sont pas encore disponibles dans cette interface."
-          />
+          <SpeedControl organizationId={organizationId} />
         </TabsContent>
         <TabsContent value="rules" className="pt-4">
-          <ComingSoon
-            title="Moteur de règles"
-            description="La consultation et la configuration des règles seront ajoutées dans une prochaine étape."
-          />
+          <RulesEngine organizationId={organizationId} />
         </TabsContent>
         <TabsContent value="drivers" className="pt-4">
           <Drivers organizationId={organizationId} />
