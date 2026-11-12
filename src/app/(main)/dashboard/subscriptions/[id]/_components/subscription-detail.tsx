@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 
-import { ArrowLeft, CalendarRange, FileText, Package, ReceiptText, RefreshCw, Truck, Wallet } from "lucide-react";
+import { ArrowLeft, CalendarRange, FileText, Package, RefreshCw, Truck, Wallet } from "lucide-react";
 
 import { SubscriptionRowActions } from "@/app/(main)/dashboard/_components/subscriptions/subscription-row-actions";
 import {
@@ -20,6 +20,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useSubscription } from "@/hooks/api/use-subscriptions";
 import { formatDate, formatDateTime } from "@/lib/format";
 
+import { BillingTab } from "./billing-tab";
 import { HistoryTab } from "./history-tab";
 import { OfferTab } from "./offer-tab";
 import { PricingTab } from "./pricing-tab";
@@ -134,11 +135,7 @@ export function SubscriptionDetail({ id }: { id: string }) {
           <PricingTab subscription={data} />
         </TabsContent>
         <TabsContent value="billing" className="pt-4">
-          <EmptyState
-            icon={<ReceiptText />}
-            title="Facturation à venir"
-            description="Les factures de cette souscription apparaîtront ici avec le module Facturation (phase 11)."
-          />
+          <BillingTab subscription={data} />
         </TabsContent>
         <TabsContent value="history" className="pt-4">
           <HistoryTab subscription={data} />

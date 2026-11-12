@@ -1,12 +1,17 @@
 import type { ActivityParams, AdminCommandListParams, AdminStatsParams } from "@/types/admin";
+import type { AlertListParams, SmsListParams } from "@/types/alerting";
 import type { AuditLogListParams } from "@/types/audit";
+import type { BillingStatsParams, InvoiceListParams, PaymentListParams, ReminderListParams } from "@/types/billing";
+import type { ClientOfferListParams } from "@/types/client-offer";
 import type { DeviceListParams } from "@/types/device";
 import type { DriverListParams } from "@/types/driver";
 import type { GroupKind, GroupListParams } from "@/types/group";
+import type { IncidentListParams } from "@/types/incident";
 import type { OfferListParams } from "@/types/offer";
-import type { SubscriptionListParams } from "@/types/subscription";
 import type { OrganizationListParams } from "@/types/organization";
 import type { ScheduleHistoryParams, ScheduleListParams } from "@/types/schedule";
+import type { ReferentialKind } from "@/types/settings";
+import type { SubscriptionListParams } from "@/types/subscription";
 import type { UserListParams } from "@/types/user";
 import type { VehicleListParams } from "@/types/vehicle";
 
@@ -94,6 +99,25 @@ export const queryKeys = {
     availability: ["subscriptions", "availability"] as const,
     vehicleHistory: (vehicleId: string) => ["subscriptions", "vehicle-history", vehicleId] as const,
   },
+  /** Factures émises, paiements et relances (service simulé) : invalider `billing.all` rafraîchit tout. */
+  billing: {
+    all: ["billing"] as const,
+    invoices: (params: InvoiceListParams) => ["billing", "invoices", params] as const,
+    invoice: (id: string) => ["billing", "invoice", id] as const,
+    stats: (params: BillingStatsParams) => ["billing", "stats", params] as const,
+    preview: (subscriptionId: string, start?: string, end?: string) =>
+      ["billing", "preview", subscriptionId, start ?? "", end ?? ""] as const,
+    contactEmail: (organizationId: string) => ["billing", "contact-email", organizationId] as const,
+    payments: (params: PaymentListParams) => ["billing", "payments", params] as const,
+    paymentMethods: ["billing", "payment-methods"] as const,
+    reminders: (params: ReminderListParams) => ["billing", "reminders", params] as const,
+  },
+  /** Offre attribuée à chaque client (service simulé) : conditionne ses permissions. */
+  clientOffers: {
+    all: ["client-offers"] as const,
+    list: (params: ClientOfferListParams) => ["client-offers", "list", params] as const,
+    ofUser: (userId: string) => ["client-offers", "user", userId] as const,
+  },
   /** Client exploitant d'un véhicule (service simulé). */
   vehicleOperators: {
     all: ["vehicle-operators"] as const,
@@ -119,6 +143,41 @@ export const queryKeys = {
       ["audit", "actions", params] as const,
     organization: (id: string, params: AuditLogListParams) => ["audit", "organization", id, params] as const,
     group: (kind: GroupKind, id: string, params: AuditLogListParams) => ["audit", "group", kind, id, params] as const,
+  },
+  /** Alertes, configurations, SMS et modèles (service simulé) : invalider `alerting.all` rafraîchit tout. */
+  alerting: {
+    all: ["alerting"] as const,
+    alerts: (params: AlertListParams) => ["alerting", "alerts", params] as const,
+    alert: (id: string) => ["alerting", "alert", id] as const,
+    alertStats: ["alerting", "alert-stats"] as const,
+    configs: ["alerting", "configs"] as const,
+    sms: (params: SmsListParams) => ["alerting", "sms", params] as const,
+    smsStats: ["alerting", "sms-stats"] as const,
+    templates: ["alerting", "templates"] as const,
+  },
+  /** Incidents (service simulé) — liés aux alertes : une écriture invalide aussi `alerting`. */
+  incidents: {
+    all: ["incidents"] as const,
+    list: (params: IncidentListParams) => ["incidents", "list", params] as const,
+    detail: (id: string) => ["incidents", "detail", id] as const,
+    stats: ["incidents", "stats"] as const,
+  },
+  /** Paramètres (service simulé, sauf la surveillance des services). */
+  settings: {
+    all: ["settings"] as const,
+    general: ["settings", "general"] as const,
+    sms: ["settings", "sms"] as const,
+    email: ["settings", "email"] as const,
+    referential: (kind: ReferentialKind) => ["settings", "referential", kind] as const,
+    technical: ["settings", "technical"] as const,
+    health: ["settings", "health"] as const,
+    history: ["settings", "history"] as const,
+  },
+  /** Transfert du journal d'audit vers le SOC (destination et historique simulés). */
+  soc: {
+    all: ["soc"] as const,
+    destination: ["soc", "destination"] as const,
+    history: ["soc", "history"] as const,
   },
   flespi: {
     all: ["flespi"] as const,

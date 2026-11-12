@@ -1,4 +1,5 @@
 import type { StatusTone } from "@/components/status-badge";
+import type { InvoiceKind, InvoiceStatus, PaymentStatus, ReminderChannel, ReminderSendStatus } from "@/types/billing";
 import type { ClientStatus, ClientType } from "@/types/client-profile";
 import type { CommandStatus } from "@/types/command";
 import type { DeviceStatus } from "@/types/device";
@@ -55,6 +56,44 @@ export const subscriptionStatusMeta: Record<SubscriptionStatus, Meta> = {
   suspended: { label: "Suspendue", tone: "orange" },
   terminated: { label: "Résiliée", tone: "danger" },
 };
+
+export const invoiceStatusMeta: Record<InvoiceStatus, Meta> = {
+  draft: { label: "Brouillon", tone: "neutral" },
+  unpaid: { label: "Impayée", tone: "info" },
+  partial: { label: "Partiellement payée", tone: "warning" },
+  overdue: { label: "En retard", tone: "danger" },
+  paid: { label: "Payée", tone: "success" },
+  cancelled: { label: "Annulée", tone: "neutral" },
+};
+
+export const invoiceKindLabels: Record<InvoiceKind, string> = {
+  standard: "Facture d'abonnement",
+  complement: "Complément",
+  correction: "Correction",
+};
+
+export const paymentStatusMeta: Record<PaymentStatus, Meta> = {
+  confirmed: { label: "Confirmé", tone: "success" },
+  cancelled: { label: "Annulé", tone: "neutral" },
+};
+
+export const reminderSendStatusMeta: Record<ReminderSendStatus, Meta> = {
+  sent: { label: "Envoyée", tone: "success" },
+  failed: { label: "Échec", tone: "danger" },
+};
+
+export const reminderChannelLabels: Record<ReminderChannel, string> = {
+  email: "E-mail",
+  sms: "SMS",
+};
+
+/** Niveaux de relance : 1 = rappel amiable, 2 = relance, 3 = mise en demeure. */
+export function reminderLevelMeta(level: number): Meta {
+  if (level >= 3) return { label: "Mise en demeure", tone: "danger" };
+  if (level === 2) return { label: "Relance", tone: "orange" };
+  if (level === 1) return { label: "Rappel amiable", tone: "warning" };
+  return { label: "Jamais relancée", tone: "neutral" };
+}
 
 export const offerPeriodicityLabels: Record<OfferPeriodicity, string> = {
   monthly: "Mensuelle",

@@ -14,8 +14,10 @@ import {
   Map as MapIcon,
   MapPinned,
   Package,
+  PackagePlus,
   ReceiptText,
   ScrollText,
+  Send,
   Server,
   ServerCog,
   Settings,
@@ -25,6 +27,7 @@ import {
   UserRound,
   Users,
   UsersRound,
+  Wallet,
   Workflow,
 } from "lucide-react";
 
@@ -95,8 +98,8 @@ export const sidebarItems: NavGroup[] = [
         subItems: [
           { id: "billing-dashboard", title: "Tableau de bord financier", url: "/dashboard/billing" },
           { id: "invoice", title: "Factures", url: "/dashboard/invoice", icon: ReceiptText },
-          { id: "payments", title: "Paiements", url: soon("Gestion des paiements") },
-          { id: "reminders", title: "Relances", url: soon("Relances") },
+          { id: "payments", title: "Paiements", url: "/dashboard/payments", icon: Wallet },
+          { id: "reminders", title: "Relances", url: "/dashboard/reminders", icon: Send },
         ],
       },
       {
@@ -106,6 +109,9 @@ export const sidebarItems: NavGroup[] = [
         subItems: [
           { id: "offers", title: "Catalogue des offres", url: "/dashboard/offers", icon: Package },
           { id: "entreprises", title: "Gestion des clients", url: "/dashboard/entreprises", icon: BuildingComplex },
+          // Retour de la direction (12/11/2026) : la supervision rejoint la gestion des clients.
+          { id: "fleet", title: "Supervision", url: "/dashboard/fleet", icon: MapPinned },
+          { id: "client-offers", title: "Attribution des offres", url: "/dashboard/client-offers", icon: PackagePlus },
           {
             id: "subscriptions",
             title: "Gestion des souscriptions",
@@ -120,20 +126,20 @@ export const sidebarItems: NavGroup[] = [
         title: "Alertes & Notifications",
         icon: BellRing,
         subItems: [
-          { id: "alert-center", title: "Centre des alertes", url: "/dashboard/mail" },
+          { id: "alert-center", title: "Centre des alertes", url: "/dashboard/alerts" },
           {
             id: "notification-config",
             title: "Configuration des notifications",
-            url: soon("Configuration des notifications"),
+            url: "/dashboard/notifications",
           },
-          { id: "sms", title: "Gestion des SMS", url: soon("Gestion des SMS") },
-          { id: "templates", title: "Modèles de notifications", url: soon("Modèles de notifications") },
+          { id: "sms", title: "Gestion des SMS", url: "/dashboard/sms" },
+          { id: "templates", title: "Modèles de notifications", url: "/dashboard/notification-templates" },
         ],
       },
       {
         id: "incidents",
         title: "Gestion des incidents",
-        url: soon("Gestion des incidents"),
+        url: "/dashboard/incidents",
         icon: TriangleAlert,
       },
       {
@@ -152,14 +158,14 @@ export const sidebarItems: NavGroup[] = [
         title: "Paramètres",
         icon: Settings,
         subItems: [
-          { id: "settings-general", title: "Paramètres généraux", url: soon("Paramètres généraux") },
+          { id: "settings-general", title: "Paramètres généraux", url: "/dashboard/settings/general" },
           { id: "channel", title: "Intégrations GPS (Flespi)", url: "/dashboard/channel", icon: Server },
           { id: "device", title: "Trackers", url: "/dashboard/device", icon: CarBattery },
           { id: "group_device", title: "Lots de trackers", url: "/dashboard/group_device", icon: ServerCog },
-          { id: "sms-gateway", title: "Passerelle SMS", url: soon("Passerelle SMS") },
-          { id: "email-settings", title: "Paramètres e-mail", url: soon("Paramètres e-mail") },
-          { id: "referentials", title: "Référentiels", url: soon("Référentiels") },
-          { id: "technical", title: "Paramètres techniques", url: soon("Paramètres techniques") },
+          { id: "sms-gateway", title: "Passerelle SMS", url: "/dashboard/settings/sms-gateway" },
+          { id: "email-settings", title: "Paramètres e-mail", url: "/dashboard/settings/email" },
+          { id: "referentials", title: "Référentiels", url: "/dashboard/settings/referentials" },
+          { id: "technical", title: "Paramètres techniques", url: "/dashboard/settings/technical" },
         ],
       },
     ],
@@ -168,12 +174,6 @@ export const sidebarItems: NavGroup[] = [
     id: 2,
     label: "Rubriques client",
     items: [
-      {
-        id: "fleet",
-        title: "Supervision",
-        url: "/dashboard/fleet",
-        icon: MapPinned,
-      },
       {
         id: "clock",
         title: "Horaires",

@@ -18,9 +18,10 @@ import { downloadCsv, formatDateTime } from "@/lib/format";
 import type { AuditLogEntry, AuditLogListParams, AuditResourceType } from "@/types/audit";
 import type { GroupKind } from "@/types/group";
 
-import { AUDIT_RESOURCE_TYPES, auditActionLabel, auditActorLabel, auditResourceLabel } from "./audit-labels";
+import { AUDIT_RESOURCE_TYPES, auditResourceLabel } from "./audit-labels";
 import { AuditLogDetailSheet } from "./audit-log-detail-sheet";
 import { AuditLogTable } from "./audit-log-table";
+import { actorDisplay, auditEventTitle, auditSentence, auditSubjectName } from "./audit-readable";
 
 const ALL = "all";
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -130,15 +131,17 @@ export function AuditLogPanel({
     downloadCsv(
       `journal-audit-${new Date().toISOString().slice(0, 10)}.csv`,
       entries.map((entry) => ({
-        horodatage: formatDateTime(entry.occurredAt),
-        action: entry.action,
-        action_libelle: auditActionLabel(entry.action),
-        ressource: auditResourceLabel(entry.resourceType),
-        identifiant_ressource: entry.resourceId ?? "",
-        acteur: auditActorLabel(entry),
+        date: formatDateTime(entry.occurredAt),
+        evenement: auditEventTitle(entry),
+        resume: auditSentence(entry),
+        element: auditSubjectName(entry) ?? "",
+        type_element: auditResourceLabel(entry.resourceType),
+        auteur: actorDisplay(entry),
         email_acteur: entry.actorEmail ?? "",
         adresse_ip: entry.actorIp ?? "",
         organisation: entry.organizationId ?? "",
+        code_action: entry.action,
+        identifiant_element: entry.resourceId ?? "",
       })),
     );
   }
@@ -207,7 +210,7 @@ export function AuditLogPanel({
                 <SelectItem value={ALL}>Toutes</SelectItem>
                 {(actions.data?.data ?? []).map((value) => (
                   <SelectItem key={value} value={value}>
-                    {auditActionLabel(value)}
+                    {auditEventTitle({ action: value, resourceType: "" })}
                   </SelectItem>
                 ))}
               </SelectGroup>

@@ -42,7 +42,7 @@ const API_RESOURCE_TO_MODULE: Record<string, string> = {
 /** Actions de l'API actuelle → actions du modèle des spécifications. */
 const API_ACTION_TO_ACTIONS: Record<string, PermissionAction[]> = {
   read: ["read"],
-  write: ["create", "update", "delete"],
+  write: ["create", "update", "delete", "assign"],
   sensitive: ["execute"],
   immobilize: ["execute"],
 };
@@ -84,7 +84,8 @@ function clean(grants: PermissionGrants): PermissionGrants {
   const known = new Set(PERMISSION_MODULES.map((m) => m.key));
   return Object.fromEntries(
     Object.entries(grants)
-      .filter(([k]) => known.has(k))
+      // Clé de module, ou clé de sous-fonctionnalité d'offre (« supervision.replay »).
+      .filter(([k]) => known.has(k) || k.includes("."))
       .map(([k, actions]) => [k, ALL_ACTIONS.filter((a) => actions.includes(a))])
       .filter(([, actions]) => actions.length > 0),
   );

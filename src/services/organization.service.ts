@@ -1,4 +1,5 @@
 import { adminPath, api } from "@/lib/axios";
+import { withRoleDisplayName } from "@/lib/roles";
 import type { ApiResponse, Paginated } from "@/types/api";
 import type { AuditLogListParams, AuditLogPage } from "@/types/audit";
 import type {
@@ -49,7 +50,7 @@ export const organizationService = {
   /** GET /organizations/:id/roles — `assignable` reflète ce que l'écriture acceptera. */
   async roles(id: string): Promise<OrganizationRole[]> {
     const { data } = await api.get<ApiResponse<OrganizationRole[]>>(adminPath(`/organizations/${id}/roles`));
-    return data.data;
+    return data.data.map((role) => withRoleDisplayName(role));
   },
 
   /** GET /organizations/:id/users?page=&perPage=&status= */

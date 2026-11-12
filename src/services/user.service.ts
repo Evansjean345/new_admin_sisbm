@@ -1,4 +1,5 @@
 import { adminPath, api } from "@/lib/axios";
+import { withRoleDisplayName } from "@/lib/roles";
 import type { ApiResponse, Paginated } from "@/types/api";
 import type { CreateUserPayload, UpdateUserPayload, User, UserDetail, UserListParams } from "@/types/user";
 
@@ -10,13 +11,13 @@ export const userService = {
   /** GET /admin/users?organizationId=&roleId=&status=&search=&page=&perPage= */
   async list(params: UserListParams = {}): Promise<Paginated<User>> {
     const { data } = await api.get<Paginated<User>>(adminPath("/users"), { params });
-    return data;
+    return { ...data, data: data.data.map((u) => ({ ...u, role: withRoleDisplayName(u.role) })) };
   },
 
   /** GET /admin/users/:id — avec son rôle et son organisation. */
   async get(id: string): Promise<UserDetail> {
     const { data } = await api.get<ApiResponse<UserDetail>>(adminPath(`/users/${id}`));
-    return data.data;
+    return { ...data.data, role: data.data.role && withRoleDisplayName(data.data.role) };
   },
 
   /**
