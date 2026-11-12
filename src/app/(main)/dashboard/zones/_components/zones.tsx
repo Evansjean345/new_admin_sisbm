@@ -66,7 +66,7 @@ export function Zones({ organizationId: scoped }: { organizationId?: string } = 
   const [draft, setDraft] = useState<{ payload: GeofencePayload; id?: string } | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const vehicles = useVehicles(
-    { organizationId: draft?.payload.organizationId || undefined, perPage: 100 },
+    { organizationId: draft?.payload.organizationId ? draft.payload.organizationId : undefined, perPage: 100 },
     { enabled: Boolean(draft?.payload.organizationId) },
   );
 
@@ -120,22 +120,34 @@ export function Zones({ organizationId: scoped }: { organizationId?: string } = 
             Nouvelle zone
           </Button>
         </div>
-      ) : (
-        <Alert>
-          <MapPinned />
-          <AlertTitle>Données de démonstration</AlertTitle>
-          <AlertDescription>
-            Zones simulées ; la détection d'entrée / sortie sera faite par le moteur de règles côté serveur.
-          </AlertDescription>
-        </Alert>
-      )}
+      ) : null}
+      <Alert>
+        <MapPinned />
+        <AlertTitle>Données de démonstration</AlertTitle>
+        <AlertDescription>
+          Zones simulées ; la détection d'entrée / sortie sera faite par le moteur de règles côté serveur.
+        </AlertDescription>
+      </Alert>
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_24rem]">
         <Card className="overflow-hidden p-0">
           <div className="h-[480px] xl:h-[620px]">
             <ZonesMap
               zones={rows}
-              draft={p ? { id: "draft", name: p.name || "Nouvelle zone", shape: p.shape, center: p.center, radiusM: p.radiusM, points: p.points, color: p.color, active: true } : null}
+              draft={
+                p
+                  ? {
+                      id: "draft",
+                      name: p.name || "Nouvelle zone",
+                      shape: p.shape,
+                      center: p.center,
+                      radiusM: p.radiusM,
+                      points: p.points,
+                      color: p.color,
+                      active: true,
+                    }
+                  : null
+              }
               selectedId={selectedId}
               onSelect={(id) => setSelectedId(id)}
               onPick={(pt) => {
@@ -152,7 +164,9 @@ export function Zones({ organizationId: scoped }: { organizationId?: string } = 
             <CardHeader>
               <CardTitle>{draft.id ? "Modifier la zone" : "Nouvelle zone"}</CardTitle>
               <CardDescription>
-                {p.shape === "circle" ? "Cliquez sur la carte pour placer le centre." : "Cliquez les sommets du polygone sur la carte."}
+                {p.shape === "circle"
+                  ? "Cliquez sur la carte pour placer le centre."
+                  : "Cliquez les sommets du polygone sur la carte."}
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -160,7 +174,12 @@ export function Zones({ organizationId: scoped }: { organizationId?: string } = 
                 {scoped ? null : (
                   <Field className="gap-1.5">
                     <FieldLabel htmlFor="gf-org">Client</FieldLabel>
-                    <OrganizationSelect id="gf-org" className="w-full" value={p.organizationId || undefined} onChange={(id) => set("organizationId", id ?? "")} />
+                    <OrganizationSelect
+                      id="gf-org"
+                      className="w-full"
+                      value={p.organizationId || undefined}
+                      onChange={(id) => set("organizationId", id ?? "")}
+                    />
                   </Field>
                 )}
                 <Field className="gap-1.5">
@@ -173,7 +192,14 @@ export function Zones({ organizationId: scoped }: { organizationId?: string } = 
                     type="single"
                     variant="outline"
                     value={p.shape}
-                    onValueChange={(v) => v && setDraft((d) => (d ? { ...d, payload: { ...d.payload, shape: v as GeofenceShape, center: null, points: [] } } : d))}
+                    onValueChange={(v) =>
+                      v &&
+                      setDraft((d) =>
+                        d
+                          ? { ...d, payload: { ...d.payload, shape: v as GeofenceShape, center: null, points: [] } }
+                          : d,
+                      )
+                    }
                   >
                     <ToggleGroupItem value="circle">
                       <Circle /> Cercle
@@ -186,13 +212,26 @@ export function Zones({ organizationId: scoped }: { organizationId?: string } = 
                 {p.shape === "circle" ? (
                   <Field className="gap-1.5">
                     <FieldLabel htmlFor="gf-radius">Rayon (mètres)</FieldLabel>
-                    <Input id="gf-radius" type="number" min={50} value={p.radiusM ?? 0} onChange={(e) => set("radiusM", Number(e.target.value) || 0)} />
-                    <FieldDescription>{p.center ? `Centre : ${p.center.lat}, ${p.center.lng}` : "Centre non placé."}</FieldDescription>
+                    <Input
+                      id="gf-radius"
+                      type="number"
+                      min={50}
+                      value={p.radiusM ?? 0}
+                      onChange={(e) => set("radiusM", Number(e.target.value) || 0)}
+                    />
+                    <FieldDescription>
+                      {p.center ? `Centre : ${p.center.lat}, ${p.center.lng}` : "Centre non placé."}
+                    </FieldDescription>
                   </Field>
                 ) : (
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-muted-foreground">{p.points.length} sommet(s)</span>
-                    <Button variant="ghost" size="sm" disabled={p.points.length === 0} onClick={() => set("points", p.points.slice(0, -1))}>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      disabled={p.points.length === 0}
+                      onClick={() => set("points", p.points.slice(0, -1))}
+                    >
                       <Undo2 data-icon="inline-start" />
                       Retirer le dernier
                     </Button>
@@ -232,13 +271,21 @@ export function Zones({ organizationId: scoped }: { organizationId?: string } = 
                 </Field>
                 <div className="flex flex-wrap gap-4">
                   <Field orientation="horizontal" className="w-auto">
-                    <Checkbox id="gf-in" checked={p.alertOnEntry} onCheckedChange={(v) => set("alertOnEntry", v === true)} />
+                    <Checkbox
+                      id="gf-in"
+                      checked={p.alertOnEntry}
+                      onCheckedChange={(v) => set("alertOnEntry", v === true)}
+                    />
                     <FieldLabel htmlFor="gf-in" className="font-normal">
                       Alerte à l'entrée
                     </FieldLabel>
                   </Field>
                   <Field orientation="horizontal" className="w-auto">
-                    <Checkbox id="gf-out" checked={p.alertOnExit} onCheckedChange={(v) => set("alertOnExit", v === true)} />
+                    <Checkbox
+                      id="gf-out"
+                      checked={p.alertOnExit}
+                      onCheckedChange={(v) => set("alertOnExit", v === true)}
+                    />
                     <FieldLabel htmlFor="gf-out" className="font-normal">
                       Alerte à la sortie
                     </FieldLabel>
@@ -246,9 +293,17 @@ export function Zones({ organizationId: scoped }: { organizationId?: string } = 
                 </div>
                 <Field className="gap-1.5">
                   <FieldLabel htmlFor="gf-vehicles">Véhicules surveillés</FieldLabel>
-                  <Select value="" onValueChange={(v) => !p.vehicleIds.includes(v) && set("vehicleIds", [...p.vehicleIds, v])} disabled={!p.organizationId}>
+                  <Select
+                    value=""
+                    onValueChange={(v) => !p.vehicleIds.includes(v) && set("vehicleIds", [...p.vehicleIds, v])}
+                    disabled={!p.organizationId}
+                  >
                     <SelectTrigger id="gf-vehicles" className="w-full">
-                      <SelectValue placeholder={p.vehicleIds.length ? `${p.vehicleIds.length} véhicule(s)` : "Tous les véhicules du client"} />
+                      <SelectValue
+                        placeholder={
+                          p.vehicleIds.length ? `${p.vehicleIds.length} véhicule(s)` : "Tous les véhicules du client"
+                        }
+                      />
                     </SelectTrigger>
                     <SelectContent position="popper" className="max-h-64">
                       <SelectGroup>
@@ -309,7 +364,11 @@ export function Zones({ organizationId: scoped }: { organizationId?: string } = 
                 </div>
               ) : rows.length === 0 ? (
                 <div className="px-4">
-                  <EmptyState icon={<MapPinned />} title="Aucune zone" description="Créez une zone puis dessinez-la sur la carte." />
+                  <EmptyState
+                    icon={<MapPinned />}
+                    title="Aucune zone"
+                    description="Créez une zone puis dessinez-la sur la carte."
+                  />
                 </div>
               ) : (
                 <ul className="flex flex-col divide-y">
@@ -322,7 +381,8 @@ export function Zones({ organizationId: scoped }: { organizationId?: string } = 
                       <button type="button" className="min-w-0 flex-1 text-left" onClick={() => setSelectedId(z.id)}>
                         <p className="truncate font-medium text-sm">{z.name}</p>
                         <p className="truncate text-muted-foreground text-xs">
-                          {z.kind === "forbidden" ? "Interdite" : "Autorisée"} · {z.shape === "circle" ? `cercle ${z.radiusM} m` : `polygone ${z.points.length} pts`}
+                          {z.kind === "forbidden" ? "Interdite" : "Autorisée"} ·{" "}
+                          {z.shape === "circle" ? `cercle ${z.radiusM} m` : `polygone ${z.points.length} pts`}
                           {scoped ? "" : ` · ${z.organization.name}`}
                         </p>
                       </button>

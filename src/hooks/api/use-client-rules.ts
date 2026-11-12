@@ -13,9 +13,15 @@ const KEYS = {
 };
 
 export const useGeofences = (organizationId?: string) =>
-  useQuery({ queryKey: KEYS.geofences(organizationId), queryFn: () => clientRulesService.listGeofences(organizationId) });
+  useQuery({
+    queryKey: KEYS.geofences(organizationId),
+    queryFn: () => clientRulesService.listGeofences(organizationId),
+  });
 export const useSpeedPolicies = (organizationId?: string) =>
-  useQuery({ queryKey: KEYS.speed(organizationId), queryFn: () => clientRulesService.listSpeedPolicies(organizationId) });
+  useQuery({
+    queryKey: KEYS.speed(organizationId),
+    queryFn: () => clientRulesService.listSpeedPolicies(organizationId),
+  });
 export const useRules = (organizationId?: string) =>
   useQuery({ queryKey: KEYS.rules(organizationId), queryFn: () => clientRulesService.listRules(organizationId) });
 
@@ -25,13 +31,17 @@ function useRulesMutation<TArgs, TResult>(fn: (args: TArgs) => Promise<TResult>)
 }
 
 export const useSaveGeofence = () =>
-  useRulesMutation(({ payload, id }: { payload: GeofencePayload; id?: string }) => clientRulesService.saveGeofence(payload, id));
+  useRulesMutation(({ payload, id }: { payload: GeofencePayload; id?: string }) =>
+    clientRulesService.saveGeofence(payload, id),
+  );
 export const useSaveSpeedPolicy = () =>
   useRulesMutation(({ payload, id }: { payload: SpeedPolicyPayload; id?: string }) =>
     clientRulesService.saveSpeedPolicy(payload, id),
   );
 export const useSaveRule = () =>
-  useRulesMutation(({ payload, id }: { payload: RulePayload; id?: string }) => clientRulesService.saveRule(payload, id));
+  useRulesMutation(({ payload, id }: { payload: RulePayload; id?: string }) =>
+    clientRulesService.saveRule(payload, id),
+  );
 export const useToggleClientRule = () =>
   useRulesMutation(({ kind, id, active }: { kind: "geofence" | "speed" | "rule"; id: string; active: boolean }) =>
     clientRulesService.toggle(kind, id, active),

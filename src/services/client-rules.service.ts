@@ -39,7 +39,11 @@ const COLORS = ["#2563eb", "#16a34a", "#dc2626", "#d97706", "#7c3aed"];
 async function seed(): Promise<Store> {
   const s: Store = { orgs: [], geofences: [], policies: [], rules: [] };
   try {
-    s.orgs = (await organizationService.list({ perPage: 100 })).data.map((o) => ({ id: o.id, name: o.name, code: o.code }));
+    s.orgs = (await organizationService.list({ perPage: 100 })).data.map((o) => ({
+      id: o.id,
+      name: o.name,
+      code: o.code,
+    }));
   } catch {
     return s;
   }
@@ -210,7 +214,12 @@ export const clientRulesService = {
     if (!payload.alertOnEntry && !payload.alertOnExit) {
       throw new ApiError(422, "E_VALIDATION", "Choisissez au moins une alerte (entrée ou sortie).");
     }
-    const zone: Geofence = { ...payload, id: id ?? mockId(), organization: orgOf(s, payload.organizationId), updatedAt: mockNow() };
+    const zone: Geofence = {
+      ...payload,
+      id: id ?? mockId(),
+      organization: orgOf(s, payload.organizationId),
+      updatedAt: mockNow(),
+    };
     upsert(s.geofences, zone);
     return mockClone(zone);
   },
@@ -224,7 +233,8 @@ export const clientRulesService = {
     await mockDelay();
     const s = await db();
     if (!payload.name.trim()) throw new ApiError(422, "E_VALIDATION", "Nom obligatoire.");
-    if (payload.limitKph < 5 || payload.limitKph > 200) throw new ApiError(422, "E_VALIDATION", "Limite entre 5 et 200 km/h.");
+    if (payload.limitKph < 5 || payload.limitKph > 200)
+      throw new ApiError(422, "E_VALIDATION", "Limite entre 5 et 200 km/h.");
     if (payload.scope === "zone") {
       const zone = s.geofences.find((z) => z.id === payload.zoneId);
       if (!zone || zone.organizationId !== payload.organizationId) {
