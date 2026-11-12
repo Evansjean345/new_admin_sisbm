@@ -12,6 +12,7 @@ import { Avatar, AvatarBadge, AvatarFallback } from "@/components/ui/avatar";
 import type { DataTableFeatures } from "@/lib/data-table-features";
 import { formatDateTime, formatRelative } from "@/lib/format";
 import { getInitials } from "@/lib/utils";
+import type { MfaStatus, UserScope } from "@/types/access";
 import type { Role } from "@/types/role";
 import type { User } from "@/types/user";
 
@@ -45,11 +46,30 @@ export function UserAvatar({ user, size = "lg" }: { user: User; size?: "default"
   );
 }
 
-export function getUsersColumns(roles: Map<string, Role>): ColumnDef<DataTableFeatures, User>[] {
+/** Identifiant unique et lisible du compte (§VI.4 « chaque utilisateur a un identifiant unique »). */
+export function userIdentifier(user: Pick<User, "id">): string {
+  return `USR-${user.id.replace(/-/g, "").slice(0, 8).toUpperCase()}`;
+}
+
+const SCOPE_SHORT: Record<UserScope["mode"], string> = {
+  organization: "Toute l'organisation",
+  vehicle_groups: "Groupes",
+  vehicles: "Véhicules",
+};
+
+export interface UsersColumnsExtras {
+  scopes?: Record<string, UserScope>;
+  mfa?: Record<string, MfaStatus>;
+}
+
+export function getUsersColumns(
+  roles: Map<string, Role>,
+  extras: UsersColumnsExtras = {},
+): ColumnDef<DataTableFeatures, User>[] {
   return [
     {
       id: "search",
-      accessorFn: (row) => `${row.fullName} ${row.email} ${row.phone ?? ""}`,
+      accessorFn: (row) => `${row.fullName} ${row.email} ${row.phone ?? ""} ${userIdentifier(row)}`,
       filterFn: "includesString",
       enableHiding: true,
     },
@@ -85,6 +105,55 @@ export function getUsersColumns(roles: Map<string, Role>): ColumnDef<DataTableFe
             <span className="whitespace-nowrap">{role?.name ?? "—"}</span>
             <span className="text-muted-foreground text-xs">{role?.code ?? ""}</span>
           </div>
+        );
+      },
+    },
+    {
+      id: "identifier",
+      accessorFn: (row) => userIdentifier(row),
+      header: "Identifiant",
+      cell: ({ row }) => (
+        <div className="grid gap-0.5">
+          <span className="font-mono text-xs">{userIdentifier(row.original)}</span>
+          <span className="text-muted-foreground text-xs">Connexion par e-mail</span>
+        </div>
+      ),
+    },
+    {
+      id: "scope",
+      accessorFn: (row) => extras.scopes?.[row.id]?.mode ?? "organization",
+      header: "Périmètre",
+      cell: ({ row }) => {
+        if (row.original.role?.code === "super_admin") {
+          return <span className="text-muted-foreground text-xs">Plateforme (tous les clients)</span>;
+        }
+        const scope = extras.scopes?.[row.original.id];
+        if (!scope) return <span className="text-muted-foreground">…</span>;
+        const items = scope.mode === "vehicle_groups" ? scope.groupNames : scope.vehicleLabels;
+        return (
+          <div className="grid max-w-44 gap-0.5">
+            <span className="text-sm">{SCOPE_SHORT[scope.mode]}</span>
+            {items.length ? (
+              <span className="truncate text-muted-foreground text-xs" title={items.join(", ")}>
+                {items.join(", ")}
+              </span>
+            ) : null}
+          </div>
+        );
+      },
+    },
+    {
+      id: "mfa",
+      accessorFn: (row) => (extras.mfa?.[row.id]?.enabled ? 1 : 0),
+      header: "MFA",
+      cell: ({ row }) => {
+        const m = extras.mfa?.[row.original.id];
+        if (!m) return <span className="text-muted-foreground">…</span>;
+        if (m.enabled) return <StatusBadge tone="success">Activée</StatusBadge>;
+        return m.required ? (
+          <StatusBadge tone="danger">Exigée</StatusBadge>
+        ) : (
+          <StatusBadge tone="neutral">Non activée</StatusBadge>
         );
       },
     },

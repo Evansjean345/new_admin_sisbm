@@ -13,9 +13,10 @@ import { Button } from "@/components/ui/button";
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { InputGroup, InputGroupInput } from "@/components/ui/input-group";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useCurrentUser } from "@/hooks/api/use-auth";
 import { useClientOffer } from "@/hooks/api/use-client-offers";
 import { useOfferFeatures } from "@/hooks/api/use-offers";
-import { useUsers } from "@/hooks/api/use-users";
+import { useUser, useUsers } from "@/hooks/api/use-users";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { getErrorMessage } from "@/lib/axios";
 import { buildPermissionTree, fullGrants, normalizeGrants } from "@/lib/permissions";
@@ -41,7 +42,7 @@ function isPlatformUser(user: User) {
  * des permissions, et seules les fonctionnalités de cette offre sont proposées (sous-fonctionnalités
  * comprises). Les collaborateurs SISBM n'ont pas d'offre : ils voient la matrice complète.
  */
-export function RolePermissionsPanel({ roles }: { roles: RoleDefinition[] }) {
+export function RolePermissionsPanel({ roles, initialUserId }: { roles: RoleDefinition[]; initialUserId?: string }) {
   const [userSearch, setUserSearch] = useState("");
   const debouncedSearch = useDebouncedValue(userSearch.trim());
   const users = useUsers({ page: 1, perPage: 100, search: debouncedSearch || undefined });
@@ -50,8 +51,16 @@ export function RolePermissionsPanel({ roles }: { roles: RoleDefinition[] }) {
   const [draft, setDraft] = useState<PermissionGrants>({});
   const [assignOpen, setAssignOpen] = useState(false);
   const features = useOfferFeatures();
+  const { data: me } = useCurrentUser();
+  // Présélection depuis la liste des utilisateurs (« Modifier les permissions »).
+  const preselected = useUser(initialUserId && !selectedUser ? initialUserId : undefined);
+  useEffect(() => {
+    if (preselected.data && !selectedUser) setSelectedUser(preselected.data as unknown as User);
+  }, [preselected.data, selectedUser]);
 
   const platform = selectedUser ? isPlatformUser(selectedUser) : false;
+  /** On ne modifie jamais ses propres permissions (§VI.4). */
+  const isSelf = Boolean(selectedUser && me?.id === selectedUser.id);
   const clientOffer = useClientOffer(selectedUser && !platform ? selectedUser.id : undefined);
   const offer = clientOffer.data ?? null;
 
@@ -83,7 +92,7 @@ export function RolePermissionsPanel({ roles }: { roles: RoleDefinition[] }) {
     setDraft(baseline);
   }, [baseline]);
 
-  const dirty = Boolean(selectedUser && tree && !platform && !same(draft, baseline));
+  const dirty = Boolean(selectedUser && tree && !platform && !isSelf && !same(draft, baseline));
   const summary = grantSummary(draft);
 
   function selectUser(id: string) {
@@ -93,7 +102,7 @@ export function RolePermissionsPanel({ roles }: { roles: RoleDefinition[] }) {
   }
 
   function save() {
-    if (!selectedUser || platform) return;
+    if (!selectedUser || platform || isSelf) return;
     setSavedByUser((current) => ({ ...current, [selectedUser.id]: draft }));
     toast.success("Permissions enregistrées pour cette session", {
       description: `${selectedUser.fullName} — les changements ne sont pas envoyés à l'API.`,
@@ -181,7 +190,7 @@ export function RolePermissionsPanel({ roles }: { roles: RoleDefinition[] }) {
                 </span>
               ) : null}
             </div>
-            {tree && !platform ? (
+            {tree && !platform && !isSelf ? (
               <div className="flex flex-wrap items-center gap-2">
                 <Button variant="outline" size="sm" onClick={() => setAssignOpen(true)}>
                   <PackagePlus data-icon="inline-start" />
@@ -218,7 +227,15 @@ export function RolePermissionsPanel({ roles }: { roles: RoleDefinition[] }) {
             </Alert>
           ) : tree ? (
             <>
-              {platform ? (
+              {isSelf ? (
+                <Alert variant="destructive">
+                  <Lock />
+                  <AlertTitle>Vos propres permissions</AlertTitle>
+                  <AlertDescription>
+                    Un utilisateur ne peut pas s'accorder lui-même des privilèges : demandez à un autre administrateur.
+                  </AlertDescription>
+                </Alert>
+              ) : platform ? (
                 <Alert>
                   <Lock />
                   <AlertTitle>Collaborateur SISBM — accès complet et protégé</AlertTitle>
@@ -237,7 +254,7 @@ export function RolePermissionsPanel({ roles }: { roles: RoleDefinition[] }) {
                   </AlertDescription>
                 </Alert>
               )}
-              <PermissionEditor tree={tree} grants={draft} onChange={platform ? undefined : setDraft} />
+              <PermissionEditor tree={tree} grants={draft} onChange={platform || isSelf ? undefined : setDraft} />
               <p className="text-muted-foreground text-xs">
                 Chaque action est indépendante. La ligne d'une fonctionnalité agit sur toutes ses sous-fonctionnalités ;
                 « Tout » active ou retire toutes les actions de la ligne.

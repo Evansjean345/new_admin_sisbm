@@ -10,7 +10,15 @@ import { formatDateTime } from "@/lib/format";
 import type { AuditLogEntry } from "@/types/audit";
 
 import { auditActionTone, auditResourceLabel } from "./audit-labels";
-import { actorDisplay, actorTypeLabel, auditEventTitle, auditSubjectName } from "./audit-readable";
+import {
+  actorDisplay,
+  actorTypeLabel,
+  auditChangeSummary,
+  auditEventTitle,
+  auditModule,
+  auditResult,
+  auditSubjectName,
+} from "./audit-readable";
 
 /** Table du journal — purement présentationnelle : le panneau tient l'état. */
 export function AuditLogTable({
@@ -34,10 +42,13 @@ export function AuditLogTable({
           <TableRow>
             <TableHead className="w-44">Date</TableHead>
             <TableHead>Action</TableHead>
+            <TableHead className="hidden 2xl:table-cell">Module</TableHead>
             <TableHead className="hidden lg:table-cell">Élément concerné</TableHead>
             <TableHead className="hidden md:table-cell">Auteur</TableHead>
             {showOrganization ? <TableHead className="hidden xl:table-cell">Organisation</TableHead> : null}
             <TableHead className="hidden xl:table-cell">Adresse IP</TableHead>
+            <TableHead className="hidden lg:table-cell">Ancienne → nouvelle valeur</TableHead>
+            <TableHead>Résultat</TableHead>
             <TableHead className="w-24 text-right">
               <span className="sr-only">Détail</span>
             </TableHead>
@@ -51,6 +62,9 @@ export function AuditLogTable({
               </TableCell>
               <TableCell>
                 <StatusBadge tone={auditActionTone(entry.action)}>{auditEventTitle(entry)}</StatusBadge>
+              </TableCell>
+              <TableCell className="hidden max-w-44 text-muted-foreground text-xs 2xl:table-cell">
+                {auditModule(entry.action)}
               </TableCell>
               <TableCell className="hidden lg:table-cell">
                 <div className="flex flex-col">
@@ -75,6 +89,21 @@ export function AuditLogTable({
               ) : null}
               <TableCell className="hidden font-mono text-muted-foreground text-xs xl:table-cell">
                 {entry.actorIp ?? "—"}
+              </TableCell>
+              <TableCell className="hidden max-w-60 lg:table-cell">
+                <span
+                  className="line-clamp-2 text-muted-foreground text-xs"
+                  title={auditChangeSummary(entry) ?? undefined}
+                >
+                  {auditChangeSummary(entry) ?? "—"}
+                </span>
+              </TableCell>
+              <TableCell>
+                {auditResult(entry) === "success" ? (
+                  <StatusBadge tone="success">Réussi</StatusBadge>
+                ) : (
+                  <StatusBadge tone="danger">Échec</StatusBadge>
+                )}
               </TableCell>
               <TableCell className="text-right">
                 <Button

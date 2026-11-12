@@ -147,7 +147,13 @@ export const sidebarItems: NavGroup[] = [
         title: "Administration & Habilitations",
         icon: ShieldCheck,
         subItems: [
-          { id: "users", title: "Utilisateurs", url: "/dashboard/users", icon: Users },
+          { id: "users", title: "Utilisateurs SISBM", url: "/dashboard/users?population=platform", icon: Users },
+          {
+            id: "client-users",
+            title: "Utilisateurs clients",
+            url: "/dashboard/users?population=clients",
+            icon: UsersRound,
+          },
           { id: "roles", title: "Rôles et permissions", url: "/dashboard/roles" },
           { id: "audit", title: "Journal d'audit", url: "/dashboard/audit", icon: ScrollText },
           { id: "profile", title: "Mon profil", url: "/dashboard/profile", icon: UserRound },
