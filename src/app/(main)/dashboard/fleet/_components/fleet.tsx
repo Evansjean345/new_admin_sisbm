@@ -43,7 +43,9 @@ export function Fleet({ vehicleId, organizationId }: FleetProps) {
   const searchParams = useSearchParams();
   const single = Boolean(vehicleId);
 
-  const fleet = useFleet(!single, organizationId);
+  // `?organizationId=` : supervision d'un client ouverte depuis sa fiche (accès contextualisé).
+  const scopedOrganizationId = organizationId ?? searchParams.get("organizationId") ?? undefined;
+  const fleet = useFleet(!single, scopedOrganizationId);
   const singleVehicle = useVehicle(vehicleId);
   const selectedId = vehicleId ?? searchParams.get("vehicle");
 

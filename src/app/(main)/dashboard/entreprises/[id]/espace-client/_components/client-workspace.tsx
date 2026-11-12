@@ -3,6 +3,7 @@
 import { useState } from "react";
 
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 
 import {
   ArrowLeft,
@@ -33,6 +34,7 @@ import { SpeedControl } from "../../../../speed/_components/speed-control";
 import { Zones } from "../../../../zones/_components/zones";
 
 type WorkspaceTab = "overview" | "schedules" | "zones" | "speed" | "rules" | "drivers";
+const WORKSPACE_TABS: WorkspaceTab[] = ["overview", "schedules", "zones", "speed", "rules", "drivers"];
 
 const tabTriggerClass = "flex-none text-white/90 hover:text-white data-[state=active]:text-foreground";
 
@@ -86,7 +88,12 @@ function ClientOverview({ organizationId, vehicleCount }: { organizationId: stri
 
 export function ClientWorkspace({ organizationId }: { organizationId: string }) {
   const organization = useOrganization(organizationId);
-  const [tab, setTab] = useState<WorkspaceTab>("overview");
+  // `?tab=` : ouverture directe d'une rubrique depuis la fiche client.
+  const searchParams = useSearchParams();
+  const requested = searchParams.get("tab");
+  const [tab, setTab] = useState<WorkspaceTab>(
+    WORKSPACE_TABS.includes(requested as WorkspaceTab) ? (requested as WorkspaceTab) : "overview",
+  );
 
   if (organization.isPending) return <LoadingRows rows={8} />;
   if (organization.isError) {
