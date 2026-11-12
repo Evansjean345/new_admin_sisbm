@@ -1,12 +1,16 @@
 "use client";
 
+import { useMemo } from "react";
+
 import { StatusBadge } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { useOrganizationsStats } from "@/hooks/api/use-admin";
 import { formatDateTime } from "@/lib/format";
 import type { AuditLogEntry } from "@/types/audit";
 
-import { auditActionLabel, auditActionTone, auditActorLabel, auditResourceLabel } from "./audit-labels";
+import { auditActionTone, auditResourceLabel } from "./audit-labels";
+import { actorDisplay, actorTypeLabel, auditEventTitle, auditSubjectName } from "./audit-readable";
 
 /** Table du journal — purement présentationnelle : le panneau tient l'état. */
 export function AuditLogTable({
@@ -19,15 +23,19 @@ export function AuditLogTable({
   /** Vue inter-organisations (exploitant plateforme) : la colonne devient utile. */
   showOrganization?: boolean;
 }) {
+  // Noms d'organisation déjà en cache (sélecteurs) : jamais d'UUID à l'écran.
+  const organizations = useOrganizationsStats();
+  const orgNames = useMemo(() => new Map((organizations.data ?? []).map((o) => [o.id, o.name])), [organizations.data]);
+
   return (
     <div className="overflow-x-auto">
       <Table className="**:data-[slot='table-cell']:px-4 **:data-[slot='table-head']:px-4">
         <TableHeader>
           <TableRow>
-            <TableHead className="w-44">Horodatage</TableHead>
+            <TableHead className="w-44">Date</TableHead>
             <TableHead>Action</TableHead>
-            <TableHead className="hidden lg:table-cell">Ressource</TableHead>
-            <TableHead className="hidden md:table-cell">Acteur</TableHead>
+            <TableHead className="hidden lg:table-cell">Élément concerné</TableHead>
+            <TableHead className="hidden md:table-cell">Auteur</TableHead>
             {showOrganization ? <TableHead className="hidden xl:table-cell">Organisation</TableHead> : null}
             <TableHead className="hidden xl:table-cell">Adresse IP</TableHead>
             <TableHead className="w-24 text-right">
@@ -42,27 +50,27 @@ export function AuditLogTable({
                 {formatDateTime(entry.occurredAt)}
               </TableCell>
               <TableCell>
-                <StatusBadge tone={auditActionTone(entry.action)}>{auditActionLabel(entry.action)}</StatusBadge>
+                <StatusBadge tone={auditActionTone(entry.action)}>{auditEventTitle(entry)}</StatusBadge>
               </TableCell>
               <TableCell className="hidden lg:table-cell">
                 <div className="flex flex-col">
-                  <span>{auditResourceLabel(entry.resourceType)}</span>
-                  {entry.resourceId ? (
-                    <span className="truncate font-mono text-muted-foreground text-xs">{entry.resourceId}</span>
-                  ) : null}
+                  <span className="truncate">{auditSubjectName(entry) ?? "—"}</span>
+                  <span className="text-muted-foreground text-xs first-letter:uppercase">
+                    {auditResourceLabel(entry.resourceType)}
+                  </span>
                 </div>
               </TableCell>
               <TableCell className="hidden md:table-cell">
                 <div className="flex flex-col">
-                  <span>{auditActorLabel(entry)}</span>
-                  {entry.actorEmail ? (
-                    <span className="truncate text-muted-foreground text-xs">{entry.actorEmail}</span>
-                  ) : null}
+                  <span>{actorDisplay(entry)}</span>
+                  <span className="truncate text-muted-foreground text-xs">
+                    {entry.actorEmail ?? actorTypeLabel(entry.actorType)}
+                  </span>
                 </div>
               </TableCell>
               {showOrganization ? (
-                <TableCell className="hidden truncate font-mono text-muted-foreground text-xs xl:table-cell">
-                  {entry.organizationId ?? "—"}
+                <TableCell className="hidden max-w-48 truncate text-muted-foreground xl:table-cell">
+                  {entry.organizationId ? (orgNames.get(entry.organizationId) ?? "Organisation inconnue") : "—"}
                 </TableCell>
               ) : null}
               <TableCell className="hidden font-mono text-muted-foreground text-xs xl:table-cell">

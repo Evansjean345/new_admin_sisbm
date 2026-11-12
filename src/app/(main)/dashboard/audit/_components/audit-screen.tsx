@@ -1,15 +1,18 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 
-import { ListChecks, ScrollText, ShieldAlert } from "lucide-react";
+import { ListChecks, ScrollText, Send, ShieldAlert } from "lucide-react";
 
 import { MetricCard, metricGridClass } from "@/components/metric-card";
 import { PageHeader } from "@/components/page-header";
+import { Button } from "@/components/ui/button";
 import { useAuditActions, useAuditLogs } from "@/hooks/api/use-audit-logs";
 import { AUDIT_DEFAULT_WINDOW_DAYS } from "@/types/audit";
 
 import { AuditLogPanel } from "../../_components/audit/audit-log-panel";
+import { SocTransferDialog } from "./soc-transfer-dialog";
+import { SocTransfersCard } from "./soc-transfers-card";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -27,12 +30,19 @@ export function AuditScreen() {
   const total = useAuditLogs({ from, page: 1, perPage: 1 });
   const commands = useAuditLogs({ from, page: 1, perPage: 1, resourceType: "device_command" });
   const actions = useAuditActions({ from });
+  const [socOpen, setSocOpen] = useState(false);
 
   return (
     <div className="flex flex-col gap-4">
       <PageHeader
         title="Zone d'audit"
         description="Journal append-only des actes réalisés sur la plateforme. Lecture seule, fenêtre glissante de 30 jours par défaut."
+        actions={
+          <Button onClick={() => setSocOpen(true)}>
+            <Send data-icon="inline-start" />
+            Transférer au SOC
+          </Button>
+        }
       />
 
       <div className={metricGridClass}>
@@ -57,6 +67,9 @@ export function AuditScreen() {
       </div>
 
       <AuditLogPanel source={{ scope: "global" }} showOrganization />
+
+      <SocTransfersCard />
+      <SocTransferDialog open={socOpen} onOpenChange={setSocOpen} />
     </div>
   );
 }

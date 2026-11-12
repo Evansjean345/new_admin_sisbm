@@ -7,10 +7,11 @@ import type { CreateUserPayload, UpdateUserPayload, UserListParams } from "@/typ
 
 import { queryKeys } from "./query-keys";
 
-export function useUsers(params: UserListParams = {}) {
+export function useUsers(params: UserListParams = {}, options: { enabled?: boolean } = {}) {
   return useQuery({
     queryKey: queryKeys.users.list(params),
     queryFn: () => userService.list(params),
+    enabled: options.enabled ?? true,
     placeholderData: keepPreviousData,
   });
 }

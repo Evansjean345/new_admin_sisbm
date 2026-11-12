@@ -5,7 +5,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
-import { ArrowLeft, Pencil } from "lucide-react";
+import { ArrowLeft, Building2, Pencil } from "lucide-react";
 
 import { DetailList } from "@/components/detail-list";
 import { ErrorState, LoadingRows } from "@/components/query-state";
@@ -20,6 +20,7 @@ import { formatDateTime, formatRelative } from "@/lib/format";
 import { UserEditDialog } from "../../_components/user-edit-dialog";
 import { UserRowActions } from "../../_components/user-row-actions";
 import { UserAvatar } from "../../_components/users-columns";
+import { UserOfferCard, UserOrganizationCard } from "./user-organization-card";
 
 export function UserDetailView({ id }: { id: string }) {
   const router = useRouter();
@@ -56,6 +57,16 @@ export function UserDetailView({ id }: { id: string }) {
                   {u.role.name}
                 </Badge>
               ) : null}
+              {u.organization ? (
+                <Link
+                  href={`/dashboard/entreprises/${u.organizationId}`}
+                  prefetch={false}
+                  className="flex items-center gap-1 hover:underline"
+                >
+                  <Building2 className="size-3.5" />
+                  {u.organization.name}
+                </Link>
+              ) : null}
             </div>
           </div>
         </div>
@@ -66,6 +77,11 @@ export function UserDetailView({ id }: { id: string }) {
           </Button>
           <UserRowActions user={u} onDeleted={() => router.replace("/dashboard/users")} />
         </div>
+      </div>
+
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_22rem]">
+        <UserOrganizationCard user={u} />
+        <UserOfferCard user={u} />
       </div>
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_22rem]">
