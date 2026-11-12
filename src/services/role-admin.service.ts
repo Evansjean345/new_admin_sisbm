@@ -91,7 +91,132 @@ function clean(grants: PermissionGrants): PermissionGrants {
   );
 }
 
-const custom: RoleDefinition[] = [];
+type A = PermissionAction;
+const R: A[] = ["read"];
+const RE: A[] = ["read", "export"];
+const RW: A[] = ["read", "create", "update", "export"];
+const RWD: A[] = ["read", "create", "update", "delete", "export", "assign"];
+
+/**
+ * Rôles initiaux proposés par les spécifications (§VI.2, écran 3) et absents des rôles système de
+ * l'API. Ils sont personnalisables (modifiables, duplicables, supprimables). Les permissions sont une
+ * proposition de départ, à ajuster par SISBM — moindre privilège : rien de plus que nécessaire.
+ */
+function proposed(
+  code: string,
+  name: string,
+  description: string,
+  scope: RoleDefinition["scope"],
+  grants: PermissionGrants,
+): RoleDefinition {
+  return {
+    id: `proposed-${code}`,
+    code,
+    name,
+    description,
+    scope,
+    isSystem: false,
+    grants,
+    apiPermissions: [],
+    updatedAt: null,
+  };
+}
+
+const custom: RoleDefinition[] = [
+  proposed(
+    "sisbm_admin",
+    "Administrateur SISBM",
+    "Gestion commerciale, facturation et administration, sans les paramètres techniques.",
+    "platform",
+    {
+      dashboard: RE,
+      report: RE,
+      invoice: [...RWD, "validate", "emit"],
+      payment: [...RWD, "validate", "emit"],
+      offer: RWD,
+      organization: RWD,
+      subscription: [...RWD, "validate"],
+      vehicle: RWD,
+      supervision: R,
+      alert: [...RW, "assign"],
+      notification: [...RW, "emit"],
+      incident: [...RW, "assign", "escalate"],
+      user: RWD,
+      role: R,
+      audit: RE,
+      settings: R,
+    },
+  ),
+  proposed(
+    "support_tech",
+    "Support technique",
+    "Diagnostic des boîtiers, supervision et traitement des incidents.",
+    "platform",
+    {
+      dashboard: R,
+      vehicle: R,
+      device: [...RW, "execute"],
+      supervision: R,
+      command: ["read", "execute"],
+      alert: [...R, "assign"],
+      incident: [...RW, "assign", "escalate"],
+      audit: R,
+      settings: R,
+    },
+  ),
+  proposed(
+    "fleet_manager",
+    "Gestionnaire de flotte client",
+    "Gère la flotte de son organisation : véhicules, conducteurs, horaires, zones et règles.",
+    "client",
+    {
+      dashboard: RE,
+      report: RE,
+      vehicle: RW,
+      supervision: RE,
+      device: R,
+      schedule: [...RWD],
+      geofence: [...RWD],
+      speed: RW,
+      rule: RW,
+      driver: [...RWD],
+      command: ["read", "execute"],
+      alert: [...R, "assign"],
+      notification: RW,
+      incident: [...RW, "assign"],
+      user: R,
+    },
+  ),
+  proposed(
+    "client_supervisor",
+    "Superviseur client",
+    "Surveille la flotte en temps réel et traite les alertes, sans modifier la configuration.",
+    "client",
+    {
+      dashboard: R,
+      report: RE,
+      vehicle: R,
+      supervision: RE,
+      schedule: R,
+      geofence: R,
+      speed: R,
+      driver: R,
+      alert: [...R, "assign"],
+      incident: ["read", "create"],
+    },
+  ),
+  proposed("client_viewer", "Consultation client", "Lecture seule des données de son organisation.", "client", {
+    dashboard: R,
+    report: R,
+    vehicle: R,
+    supervision: R,
+    schedule: R,
+    geofence: R,
+    speed: R,
+    driver: R,
+    alert: R,
+  }),
+];
 
 async function all(): Promise<RoleDefinition[]> {
   const system = (await roleService.list()).map(fromApi);

@@ -84,20 +84,23 @@ function hasSubItems(item: NavMainItem): item is NavMainParentItem {
 export function NavMain({ items }: NavMainProps) {
   const path = usePathname();
 
+  // Les entrées peuvent porter une requête (`/dashboard/users?population=clients`) : on compare le chemin seul.
+  const base = (url: string) => url.split("?")[0];
+
   const isItemActive = (item: NavMainItem) => {
     if (hasSubItems(item)) {
-      return item.subItems.some((sub) => path.startsWith(sub.url));
+      return item.subItems.some((sub) => path.startsWith(base(sub.url)));
     }
 
-    return path === item.url;
+    return path === base(item.url);
   };
 
   const isSubItemActive = (url: string) => {
-    return path === url;
+    return path === base(url);
   };
 
   const isSubmenuOpen = (item: NavMainParentItem) => {
-    return item.subItems.some((sub) => path.startsWith(sub.url));
+    return item.subItems.some((sub) => path.startsWith(base(sub.url)));
   };
 
   return (

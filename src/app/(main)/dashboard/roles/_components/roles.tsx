@@ -2,6 +2,8 @@
 
 import { useMemo, useState } from "react";
 
+import { useSearchParams } from "next/navigation";
+
 import { FlaskConical, Plus, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 
@@ -31,7 +33,9 @@ export function Roles() {
   // Comptage par rôle : 100 utilisateurs max par appel côté API ; facultatif si l'accès est refusé.
   const users = useUsers({ page: 1, perPage: 100 });
   const remove = useDeleteRoleDefinition();
-  const [tab, setTab] = useState("roles");
+  const searchParams = useSearchParams();
+  const [tab, setTab] = useState(searchParams.get("tab") === "permissions" ? "permissions" : "roles");
+  const preselectedUserId = searchParams.get("user") ?? undefined;
   const [dialog, setDialog] = useState<Dialog>(null);
 
   const rows = useMemo(
@@ -104,7 +108,7 @@ export function Roles() {
             </Card>
           </TabsContent>
           <TabsContent value="permissions" className="pt-4" forceMount>
-            <RolePermissionsPanel roles={rows} />
+            <RolePermissionsPanel roles={rows} initialUserId={preselectedUserId} />
           </TabsContent>
         </Tabs>
       )}

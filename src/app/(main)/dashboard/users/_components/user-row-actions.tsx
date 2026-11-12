@@ -4,7 +4,20 @@ import { useState } from "react";
 
 import Link from "next/link";
 
-import { Ban, Eye, KeyRound, MoreHorizontal, Pencil, ShieldCheck, Trash2 } from "lucide-react";
+import {
+  Ban,
+  Eye,
+  KeyRound,
+  ListChecks,
+  MoreHorizontal,
+  Pencil,
+  ScrollText,
+  ShieldCheck,
+  ShieldOff,
+  Trash2,
+  UserCog,
+  Waypoints,
+} from "lucide-react";
 import { toast } from "sonner";
 
 import { ConfirmDialog } from "@/components/confirm-dialog";
@@ -21,16 +34,18 @@ import { useActivateUser, useDeleteUser, useSuspendUser } from "@/hooks/api/use-
 import { getErrorMessage } from "@/lib/axios";
 import type { User } from "@/types/user";
 
+import { AssignRoleDialog, ResetMfaDialog, ScopeDialog } from "./user-access-dialogs";
 import { UserEditDialog } from "./user-edit-dialog";
 import { UserResetPasswordDialog } from "./user-reset-password-dialog";
 
 export function UserRowActions({ user, onDeleted }: { user: User; onDeleted?: () => void }) {
-  const [dialog, setDialog] = useState<"edit" | "reset" | "suspend" | "delete" | null>(null);
+  const [dialog, setDialog] = useState<"edit" | "reset" | "suspend" | "delete" | "role" | "scope" | "mfa" | null>(null);
   const { data: me } = useCurrentUser();
   const suspend = useSuspendUser();
   const activate = useActivateUser();
   const remove = useDeleteUser();
   const isSelf = me?.id === user.id;
+  const isPlatform = user.role?.code === "super_admin";
 
   return (
     <>
@@ -56,11 +71,38 @@ export function UserRowActions({ user, onDeleted }: { user: User; onDeleted?: ()
             <Pencil />
             Modifier
           </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem disabled={isSelf} onClick={() => setDialog("role")}>
+            <UserCog />
+            Attribuer un rôle
+          </DropdownMenuItem>
+          <DropdownMenuItem asChild disabled={isSelf}>
+            <Link href={`/dashboard/roles?tab=permissions&user=${user.id}`} prefetch={false}>
+              <ListChecks />
+              Modifier les permissions
+            </Link>
+          </DropdownMenuItem>
+          {isPlatform ? null : (
+            <DropdownMenuItem onClick={() => setDialog("scope")}>
+              <Waypoints />
+              Définir le périmètre
+            </DropdownMenuItem>
+          )}
+          <DropdownMenuItem asChild>
+            <Link href={`/dashboard/users/${user.id}?tab=audit`} prefetch={false}>
+              <ScrollText />
+              Consulter le journal
+            </Link>
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
           <DropdownMenuItem disabled={isSelf} onClick={() => setDialog("reset")}>
             <KeyRound />
             Réinitialiser le mot de passe
           </DropdownMenuItem>
-          <DropdownMenuSeparator />
+          <DropdownMenuItem disabled={isSelf} onClick={() => setDialog("mfa")}>
+            <ShieldOff />
+            Réinitialiser la MFA
+          </DropdownMenuItem>
           {user.status === "suspended" ? (
             <DropdownMenuItem
               disabled={activate.isPending}
@@ -77,7 +119,7 @@ export function UserRowActions({ user, onDeleted }: { user: User; onDeleted?: ()
           ) : (
             <DropdownMenuItem disabled={isSelf} onClick={() => setDialog("suspend")}>
               <Ban />
-              Suspendre l'accès
+              Révoquer les accès
             </DropdownMenuItem>
           )}
           <DropdownMenuItem variant="destructive" disabled={isSelf} onClick={() => setDialog("delete")}>
@@ -87,6 +129,9 @@ export function UserRowActions({ user, onDeleted }: { user: User; onDeleted?: ()
         </DropdownMenuContent>
       </DropdownMenu>
 
+      <AssignRoleDialog user={dialog === "role" ? user : null} onOpenChange={(open) => !open && setDialog(null)} />
+      <ScopeDialog user={dialog === "scope" ? user : null} onOpenChange={(open) => !open && setDialog(null)} />
+      <ResetMfaDialog user={dialog === "mfa" ? user : null} onOpenChange={(open) => !open && setDialog(null)} />
       <UserEditDialog user={user} open={dialog === "edit"} onOpenChange={(open) => !open && setDialog(null)} />
       <UserResetPasswordDialog
         user={user}
@@ -97,15 +142,15 @@ export function UserRowActions({ user, onDeleted }: { user: User; onDeleted?: ()
       <ConfirmDialog
         open={dialog === "suspend"}
         onOpenChange={(open) => !open && setDialog(null)}
-        title={`Suspendre ${user.fullName} ?`}
-        description="L'utilisateur ne pourra plus se connecter et toutes ses sessions seront révoquées."
-        confirmLabel="Suspendre"
+        title={`Révoquer les accès de ${user.fullName} ?`}
+        description="Le compte est désactivé : l'utilisateur ne peut plus se connecter et toutes ses sessions ouvertes sont révoquées immédiatement. Réversible avec « Réactiver l'accès »."
+        confirmLabel="Révoquer les accès"
         destructive
         loading={suspend.isPending}
         onConfirm={() =>
           suspend.mutate(user.id, {
             onSuccess: () => {
-              toast.success("Accès suspendu", { description: user.email });
+              toast.success("Accès révoqués", { description: user.email });
               setDialog(null);
             },
             onError: (error) => toast.error("Suspension impossible", { description: getErrorMessage(error) }),

@@ -1,6 +1,8 @@
 "use client";
 import * as React from "react";
 
+import { useSearchParams } from "next/navigation";
+
 import {
   type ColumnFiltersState,
   type ColumnVisibilityState,
@@ -21,6 +23,7 @@ import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectVa
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { APP_CONFIG } from "@/config/app-config";
+import { useMfaStatuses, useUserScopes } from "@/hooks/api/use-access";
 import { useOrganizations } from "@/hooks/api/use-organizations";
 import { useRoles, useRolesMap } from "@/hooks/api/use-roles";
 import { useUsers } from "@/hooks/api/use-users";
@@ -30,7 +33,7 @@ import type { User, UserStatus } from "@/types/user";
 
 import { UserCreateDialog } from "./user-create-dialog";
 import { UserRowActions } from "./user-row-actions";
-import { getUsersColumns, UserAvatar } from "./users-columns";
+import { getUsersColumns, UserAvatar, userIdentifier } from "./users-columns";
 import { UsersTable } from "./users-table";
 
 const ALL = "all";
@@ -48,7 +51,16 @@ export function Users() {
   const [columnVisibility, setColumnVisibility] = React.useState<ColumnVisibilityState>({ search: false });
   const [view, setView] = React.useState<"list" | "grid">("list");
   const [createOpen, setCreateOpen] = React.useState(false);
-  const [population, setPopulation] = React.useState<Population>("all");
+  // `?population=platform|clients` : écrans 1 et 2 du §VI.2, ouverts depuis le menu.
+  const searchParams = useSearchParams();
+  const requestedPopulation = searchParams.get("population");
+  const [population, setPopulation] = React.useState<Population>(
+    requestedPopulation === "platform" || requestedPopulation === "clients" ? requestedPopulation : "all",
+  );
+  React.useEffect(() => {
+    if (requestedPopulation === "platform" || requestedPopulation === "clients") setPopulation(requestedPopulation);
+    else if (requestedPopulation === null) setPopulation("all");
+  }, [requestedPopulation]);
 
   // Organisation de l'exploitant, repérée par son code.
   const platformOrgs = useOrganizations({ search: APP_CONFIG.platformOrganizationCode, perPage: 10 });
@@ -73,7 +85,14 @@ export function Users() {
     [population, platformOrg, pageUsers],
   );
 
-  const columns = React.useMemo(() => getUsersColumns(rolesMap), [rolesMap]);
+  // Périmètre et MFA de la page affichée (services simulés en attendant l'API).
+  const userIds = React.useMemo(() => data.map((u) => u.id), [data]);
+  const scopes = useUserScopes(userIds);
+  const mfa = useMfaStatuses(React.useMemo(() => data.map((u) => ({ id: u.id, roleCode: u.role?.code })), [data]));
+  const columns = React.useMemo(
+    () => getUsersColumns(rolesMap, { scopes: scopes.data, mfa: mfa.data }),
+    [rolesMap, scopes.data, mfa.data],
+  );
 
   // Pagination côté serveur (meta de l'API), recherche et filtre de rôle côté client sur la page courante.
   const table = useTable({
@@ -99,6 +118,7 @@ export function Users() {
     downloadCsv(
       `utilisateurs-${new Date().toISOString().slice(0, 10)}.csv`,
       visibleUsers.map((u) => ({
+        identifiant: userIdentifier(u),
         organisation: u.organization?.name ?? "",
         nom: u.fullName,
         email: u.email,

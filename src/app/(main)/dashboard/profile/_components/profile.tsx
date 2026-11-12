@@ -18,6 +18,7 @@ import { useUser } from "@/hooks/api/use-users";
 import { useHydrated } from "@/hooks/use-hydrated";
 
 import { ProfileHeader } from "./profile-header";
+import { ProfileMfa } from "./profile-mfa";
 import { ProfileOverview } from "./profile-overview";
 import { ProfilePermissions } from "./profile-permissions";
 import { ProfileSecurity } from "./profile-security";
@@ -107,7 +108,10 @@ export function Profile() {
           </TabsContent>
 
           <TabsContent className="py-4" value="security">
-            <ProfileSecurity />
+            <div className="flex flex-col gap-4">
+              <ProfileMfa userId={user.id} email={user.email} roleCode={role?.code} />
+              <ProfileSecurity />
+            </div>
           </TabsContent>
         </div>
       </Tabs>

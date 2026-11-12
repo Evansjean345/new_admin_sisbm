@@ -417,3 +417,46 @@ export function auditContext(entry: Pick<AuditLogEntry, "metadata">): Array<{ la
     .filter(([k]) => !isTechnicalField(k))
     .map(([k, v]) => ({ label: fieldLabel(k), value: formatAuditValue(k, v) }));
 }
+
+// ── Colonnes « Module » et « Résultat » du journal (§VI.2, écran 5) ─────────
+
+const MODULES: Record<string, string> = {
+  identity: "Administration & habilitations",
+  security: "Commandes et sécurité",
+  fleet: "Offres & Clients — véhicules et flotte",
+  billing: "Facturation",
+  telemetry: "Supervision GPS",
+  scheduling: "Horaires",
+  alerting: "Alertes & notifications",
+  incident: "Gestion des incidents",
+  settings: "Paramètres",
+  commercial: "Offres & Clients",
+};
+
+/** Module fonctionnel de l'action (premier segment `domaine.ressource.verbe`). */
+export function auditModule(action: string): string {
+  const domain = action.split(".")[0] ?? "";
+  return MODULES[domain] ?? domain.replaceAll("_", " ");
+}
+
+/** Résultat de l'opération : échec si le verbe ou les métadonnées l'indiquent. */
+export function auditResult(entry: Pick<AuditLogEntry, "action" | "metadata">): "success" | "failure" {
+  const verb = entry.action.split(".").slice(2).join(".");
+  const meta = entry.metadata ?? {};
+  const flagged = meta.result === "failure" || meta.success === false || typeof meta.error === "string";
+  return flagged || ["failed", "rejected", "login_failed", "denied", "expired"].includes(verb) ? "failure" : "success";
+}
+
+/** Premier changement lisible « ancienne → nouvelle valeur », pour la colonne de la liste. */
+export function auditChangeSummary(entry: Pick<AuditLogEntry, "before" | "after">): string | null {
+  const { changes } = auditChanges(entry);
+  if (changes.length === 0) return null;
+  const c = changes[0];
+  const text =
+    c.kind === "added"
+      ? `${c.label} : ${c.after}`
+      : c.kind === "removed"
+        ? `${c.label} : ${c.before} (supprimé)`
+        : `${c.label} : ${c.before} → ${c.after}`;
+  return changes.length > 1 ? `${text} (+${changes.length - 1})` : text;
+}

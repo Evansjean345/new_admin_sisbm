@@ -21,7 +21,15 @@ import type { GroupKind } from "@/types/group";
 import { AUDIT_RESOURCE_TYPES, auditResourceLabel } from "./audit-labels";
 import { AuditLogDetailSheet } from "./audit-log-detail-sheet";
 import { AuditLogTable } from "./audit-log-table";
-import { actorDisplay, auditEventTitle, auditSentence, auditSubjectName } from "./audit-readable";
+import {
+  actorDisplay,
+  auditChangeSummary,
+  auditEventTitle,
+  auditModule,
+  auditResult,
+  auditSentence,
+  auditSubjectName,
+} from "./audit-readable";
 
 const ALL = "all";
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -41,7 +49,9 @@ const WINDOWS = [
 export type AuditSource =
   | { scope: "global" }
   | { scope: "organization"; organizationId: string }
-  | { scope: "group"; kind: GroupKind; groupId: string };
+  | { scope: "group"; kind: GroupKind; groupId: string }
+  /** Actes réalisés par un utilisateur (§VI.3 « consulter les journaux »). */
+  | { scope: "actor"; actorId: string };
 
 interface AuditLogPanelProps {
   source: AuditSource;
@@ -92,11 +102,11 @@ export function AuditLogPanel({
     action: action === ALL ? undefined : action,
     resourceType: resourceType === ALL ? undefined : (resourceType as AuditResourceType),
     // Un UUID partiel ne filtrerait rien d'utile : on attend une saisie complète.
-    actorId: debouncedActor.length >= 36 ? debouncedActor : undefined,
+    actorId: source.scope === "actor" ? source.actorId : debouncedActor.length >= 36 ? debouncedActor : undefined,
     resourceId: debouncedResource.length >= 8 ? debouncedResource : undefined,
   };
 
-  const globalQuery = useAuditLogs(params, { enabled: source.scope === "global" });
+  const globalQuery = useAuditLogs(params, { enabled: source.scope === "global" || source.scope === "actor" });
   const organizationQuery = useOrganizationAuditLogs(
     source.scope === "organization" ? source.organizationId : undefined,
     params,
@@ -108,7 +118,11 @@ export function AuditLogPanel({
   );
 
   const query =
-    source.scope === "global" ? globalQuery : source.scope === "organization" ? organizationQuery : groupQuery;
+    source.scope === "global" || source.scope === "actor"
+      ? globalQuery
+      : source.scope === "organization"
+        ? organizationQuery
+        : groupQuery;
 
   const actions = useAuditActions({
     from,
@@ -133,6 +147,9 @@ export function AuditLogPanel({
       entries.map((entry) => ({
         date: formatDateTime(entry.occurredAt),
         evenement: auditEventTitle(entry),
+        module: auditModule(entry.action),
+        resultat: auditResult(entry) === "success" ? "Réussi" : "Échec",
+        changement: auditChangeSummary(entry) ?? "",
         resume: auditSentence(entry),
         element: auditSubjectName(entry) ?? "",
         type_element: auditResourceLabel(entry.resourceType),
