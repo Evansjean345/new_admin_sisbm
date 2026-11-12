@@ -80,13 +80,6 @@ const FEATURES: OfferFeature[] = [
     requiresHardware: false,
   },
   {
-    key: "drivers.identification",
-    label: "Identification conducteur (RFID / iButton)",
-    module: "Conducteurs",
-    description: "Nécessite un lecteur installé.",
-    requiresHardware: true,
-  },
-  {
     key: "security.immobilization",
     label: "Immobilisation à distance",
     module: "Sécurité",
@@ -162,7 +155,7 @@ function seed(): Offer[] {
       name: "Premium",
       description: "Gold + conducteurs, immobilisation et incidents.",
       referencePrice: 22_500,
-      featureKeys: keysUpTo(15),
+      featureKeys: keysUpTo(14),
       limitations: { maxVehicles: null, historyDays: 180, smsPerMonth: 500 },
       status: "active",
       launchDate: "2026-02-01",

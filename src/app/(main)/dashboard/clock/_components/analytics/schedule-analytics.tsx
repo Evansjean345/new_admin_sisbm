@@ -94,11 +94,18 @@ function monthOf(value: string | null): CivilDate | null {
  *
  * État dans l'URL (`source`, `mois`, `jour`) : la vue se partage et survit au retour.
  */
-export function ScheduleAnalytics({ onCreate }: { onCreate: () => void }) {
+export function ScheduleAnalytics({
+  onCreate,
+  organizationId: scopedOrganizationId,
+}: {
+  onCreate: () => void;
+  organizationId?: string;
+}) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const [organizationId, setOrganizationId] = useState<string | undefined>();
+  const [organizationFilter, setOrganizationFilter] = useState<string | undefined>();
+  const organizationId = scopedOrganizationId ?? organizationFilter;
   const [plannedMetric, setPlannedMetric] = useState<PlannedMetric>("vehicleHours");
   const [realMetric, setRealMetric] = useState<RealMetric>("confirmedCuts");
   const source: Source = searchParams.get("source") === "reel" ? "reel" : "prevu";
@@ -225,7 +232,7 @@ export function ScheduleAnalytics({ onCreate }: { onCreate: () => void }) {
         <span className="text-muted-foreground text-xs">Heures : {displayTz}</span>
       </div>
       <div className="flex flex-wrap items-center gap-2">
-        <OrganizationFilter value={organizationId} onChange={setOrganizationId} />
+        {scopedOrganizationId ? null : <OrganizationFilter value={organizationId} onChange={setOrganizationFilter} />}
         <Button
           size="sm"
           variant="outline"

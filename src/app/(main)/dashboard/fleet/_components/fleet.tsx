@@ -33,15 +33,17 @@ import { VehicleTripPanel } from "./vehicle-trip-panel";
 interface FleetProps {
   /** Vue dédiée à un véhicule (/dashboard/fleet/[id]). */
   vehicleId?: string;
+  /** Limite la vue à une organisation depuis son espace client. */
+  organizationId?: string;
 }
 
-export function Fleet({ vehicleId }: FleetProps) {
+export function Fleet({ vehicleId, organizationId }: FleetProps) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const single = Boolean(vehicleId);
 
-  const fleet = useFleet(!single);
+  const fleet = useFleet(!single, organizationId);
   const singleVehicle = useVehicle(vehicleId);
   const selectedId = vehicleId ?? searchParams.get("vehicle");
 
@@ -236,7 +238,7 @@ export function Fleet({ vehicleId }: FleetProps) {
         )}
       </div>
 
-      {!single ? <FleetQuickLinks /> : null}
+      {!single && !organizationId ? <FleetQuickLinks /> : null}
     </div>
   );
 }

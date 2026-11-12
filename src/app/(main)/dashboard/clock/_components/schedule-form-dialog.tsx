@@ -79,6 +79,7 @@ export function ScheduleFormDialog({
   onOpenChange,
   schedule,
   defaultOrganizationId,
+  fixedOrganizationId,
   onCreated,
 }: {
   open: boolean;
@@ -86,6 +87,7 @@ export function ScheduleFormDialog({
   /** Absent = création. */
   schedule?: UsageSchedule;
   defaultOrganizationId?: string;
+  fixedOrganizationId?: string;
   onCreated?: (schedule: UsageSchedule) => void;
 }) {
   const create = useCreateSchedule();
@@ -96,9 +98,9 @@ export function ScheduleFormDialog({
 
   useEffect(() => {
     if (!open) return;
-    form.reset(toDefaults(schedule, defaultOrganizationId));
+    form.reset(toDefaults(schedule, fixedOrganizationId ?? defaultOrganizationId));
     setWindows(WEEK_PRESETS[0].windows);
-  }, [open, schedule, defaultOrganizationId, form]);
+  }, [open, schedule, defaultOrganizationId, fixedOrganizationId, form]);
 
   const erreurPlages = schedule ? null : validateWindows(windows);
 
@@ -127,7 +129,7 @@ export function ScheduleFormDialog({
     if (erreurPlages) return;
     create.mutate(
       {
-        organizationId: values.organizationId,
+        organizationId: fixedOrganizationId ?? values.organizationId,
         name: values.name,
         description: values.description || undefined,
         timezone: values.timezone,
@@ -164,20 +166,24 @@ export function ScheduleFormDialog({
             <Controller
               control={form.control}
               name="organizationId"
-              render={({ field, fieldState }) => (
-                <Field className="gap-1.5" data-invalid={fieldState.invalid}>
-                  <FieldLabel htmlFor="schedule-organization">Organisation</FieldLabel>
-                  <OrganizationSelect
-                    id="schedule-organization"
-                    value={field.value || undefined}
-                    onChange={(id) => field.onChange(id ?? "")}
-                    invalid={fieldState.invalid}
-                    disabled={Boolean(schedule)}
-                  />
-                  {schedule ? <FieldDescription>Un calendrier ne change pas d'organisation.</FieldDescription> : null}
-                  {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
-                </Field>
-              )}
+              render={({ field, fieldState }) =>
+                fixedOrganizationId ? (
+                  <input type="hidden" {...field} value={fixedOrganizationId} />
+                ) : (
+                  <Field className="gap-1.5" data-invalid={fieldState.invalid}>
+                    <FieldLabel htmlFor="schedule-organization">Organisation</FieldLabel>
+                    <OrganizationSelect
+                      id="schedule-organization"
+                      value={field.value || undefined}
+                      onChange={(id) => field.onChange(id ?? "")}
+                      invalid={fieldState.invalid}
+                      disabled={Boolean(schedule)}
+                    />
+                    {schedule ? <FieldDescription>Un calendrier ne change pas d'organisation.</FieldDescription> : null}
+                    {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
+                  </Field>
+                )
+              }
             />
             <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_14rem]">
               <Controller

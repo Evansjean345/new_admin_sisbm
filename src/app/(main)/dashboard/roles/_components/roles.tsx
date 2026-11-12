@@ -32,7 +32,6 @@ export function Roles() {
   const users = useUsers({ page: 1, perPage: 100 });
   const remove = useDeleteRoleDefinition();
   const [tab, setTab] = useState("roles");
-  const [selectedId, setSelectedId] = useState<string | undefined>();
   const [dialog, setDialog] = useState<Dialog>(null);
 
   const rows = useMemo(
@@ -53,7 +52,6 @@ export function Roles() {
 
   function onAction(action: RoleAction, role: RoleDefinition) {
     if (action === "permissions") {
-      setSelectedId(role.id);
       setTab("permissions");
     } else {
       setDialog({ kind: action, role });
@@ -81,10 +79,10 @@ export function Roles() {
 
       <Alert>
         <FlaskConical />
-        <AlertTitle>Rôles personnalisés en démonstration</AlertTitle>
+        <AlertTitle>Rôles personnalisés et permissions individuelles en démonstration</AlertTitle>
         <AlertDescription>
-          Les rôles système viennent de l'API. Les rôles personnalisés et leurs permissions sont simulés et perdus au
-          rechargement, en attendant les routes d'écriture.
+          Les rôles système viennent de l’API. Les rôles personnalisés et les permissions individuelles ne sont pas
+          enregistrés par le backend ; les changements seront perdus en quittant cette page.
         </AlertDescription>
       </Alert>
 
@@ -105,13 +103,8 @@ export function Roles() {
               </CardContent>
             </Card>
           </TabsContent>
-          <TabsContent value="permissions" className="pt-4">
-            <RolePermissionsPanel
-              roles={rows}
-              roleId={selectedId}
-              onRoleChange={setSelectedId}
-              onDuplicate={(role) => setDialog({ kind: "duplicate", role })}
-            />
+          <TabsContent value="permissions" className="pt-4" forceMount>
+            <RolePermissionsPanel roles={rows} />
           </TabsContent>
         </Tabs>
       )}
@@ -121,10 +114,7 @@ export function Roles() {
         onOpenChange={(o) => !o && setDialog(null)}
         role={dialog?.kind === "edit" ? dialog.role : undefined}
         source={dialog?.kind === "duplicate" ? dialog.role : undefined}
-        onSaved={(saved) => {
-          setSelectedId(saved.id);
-          setTab("permissions");
-        }}
+        onSaved={() => setTab("roles")}
       />
       <ConfirmDialog
         open={dialog?.kind === "delete"}
@@ -140,7 +130,6 @@ export function Roles() {
           remove.mutate(role.id, {
             onSuccess: () => {
               toast.success("Rôle supprimé", { description: role.name });
-              if (selectedId === role.id) setSelectedId(undefined);
               setDialog(null);
             },
             onError: (error) => toast.error("Suppression impossible", { description: getErrorMessage(error) }),

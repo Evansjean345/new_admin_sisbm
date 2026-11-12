@@ -16,10 +16,15 @@ export const FLEET_MAX_VEHICLES = 100;
  * Flotte sur la carte : liste des véhicules actifs + détail de chacun
  * (boîtier monté et dernière position), rafraîchi toutes les 30 s.
  */
-export function useFleet(enabled = true) {
+export function useFleet(enabled = true, organizationId?: string) {
+  const params = {
+    perPage: FLEET_MAX_VEHICLES,
+    status: "active" as const,
+    organizationId,
+  };
   const list = useQuery({
-    queryKey: queryKeys.vehicles.list({ perPage: FLEET_MAX_VEHICLES, status: "active" }),
-    queryFn: () => vehicleService.list({ perPage: FLEET_MAX_VEHICLES, status: "active" }),
+    queryKey: queryKeys.vehicles.list(params),
+    queryFn: () => vehicleService.list(params),
     refetchInterval: 5 * 60_000,
     enabled,
   });

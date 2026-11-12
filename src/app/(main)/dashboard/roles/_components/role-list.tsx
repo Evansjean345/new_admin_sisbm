@@ -89,7 +89,7 @@ export function RoleList({
                         <DropdownMenuGroup>
                           <DropdownMenuItem onClick={() => onAction("permissions", role)}>
                             <KeyRound />
-                            {role.isSystem ? "Voir les permissions" : "Modifier les permissions"}
+                            Permissions par utilisateur
                           </DropdownMenuItem>
                           {role.isSystem ? null : (
                             <DropdownMenuItem onClick={() => onAction("edit", role)}>

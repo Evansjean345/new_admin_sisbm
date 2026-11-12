@@ -93,12 +93,14 @@ export function DriverFormDialog({
   onOpenChange,
   driver,
   defaultOrganizationId,
+  fixedOrganizationId,
   onCreated,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   driver?: Driver;
   defaultOrganizationId?: string | null;
+  fixedOrganizationId?: string;
   onCreated?: (driver: Driver) => void;
 }) {
   const create = useCreateDriver();
@@ -108,8 +110,8 @@ export function DriverFormDialog({
   const organizationId = form.watch("organizationId");
 
   useEffect(() => {
-    if (open) form.reset(toDefaults(driver, defaultOrganizationId));
-  }, [open, driver, defaultOrganizationId, form]);
+    if (open) form.reset(toDefaults(driver, fixedOrganizationId ?? defaultOrganizationId));
+  }, [open, driver, defaultOrganizationId, fixedOrganizationId, form]);
 
   function onSubmit(values: Values) {
     const nom = `${values.firstName} ${values.lastName}`;
@@ -142,7 +144,7 @@ export function DriverFormDialog({
 
     const opt = (v: string) => (v === "" ? undefined : v);
     const payload: CreateDriverPayload = {
-      organizationId: values.organizationId,
+      organizationId: fixedOrganizationId ?? values.organizationId,
       firstName: values.firstName,
       lastName: values.lastName,
       phone: opt(values.phone),
@@ -201,26 +203,30 @@ export function DriverFormDialog({
             <Controller
               control={form.control}
               name="organizationId"
-              render={({ field }) => (
-                <Field className="gap-1.5">
-                  <FieldLabel htmlFor="driver-organization">Organisation</FieldLabel>
-                  <DriverOrganizationSelect
-                    id="driver-organization"
-                    value={field.value}
-                    disabled={Boolean(driver)}
-                    onChange={(id) => {
-                      field.onChange(id);
-                      // Le véhicule choisi appartenait peut-être à l'organisation précédente.
-                      form.setValue("vehicleId", null);
-                    }}
-                  />
-                  <FieldDescription>
-                    {driver
-                      ? "Pour changer d'organisation, utilisez la carte « Organisation » de la fiche : ses effets y sont annoncés."
-                      : "Facultative. Vous pourrez rattacher ou déplacer le conducteur plus tard."}
-                  </FieldDescription>
-                </Field>
-              )}
+              render={({ field }) =>
+                fixedOrganizationId ? (
+                  <input type="hidden" {...field} value={fixedOrganizationId} />
+                ) : (
+                  <Field className="gap-1.5">
+                    <FieldLabel htmlFor="driver-organization">Organisation</FieldLabel>
+                    <DriverOrganizationSelect
+                      id="driver-organization"
+                      value={field.value}
+                      disabled={Boolean(driver)}
+                      onChange={(id) => {
+                        field.onChange(id);
+                        // Le véhicule choisi appartenait peut-être à l'organisation précédente.
+                        form.setValue("vehicleId", null);
+                      }}
+                    />
+                    <FieldDescription>
+                      {driver
+                        ? "Pour changer d'organisation, utilisez la carte « Organisation » de la fiche : ses effets y sont annoncés."
+                        : "Facultative. Vous pourrez rattacher ou déplacer le conducteur plus tard."}
+                    </FieldDescription>
+                  </Field>
+                )
+              }
             />
 
             <div className="grid gap-4 sm:grid-cols-2">

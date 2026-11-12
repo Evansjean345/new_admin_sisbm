@@ -1,132 +1,191 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useMemo, useState } from "react";
 
-import { Copy, Lock, RotateCcw, Save } from "lucide-react";
+import { Lock, RotateCcw, Save } from "lucide-react";
 import { toast } from "sonner";
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
+import { InputGroup, InputGroupInput } from "@/components/ui/input-group";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Spinner } from "@/components/ui/spinner";
-import { useUpdateRoleDefinition } from "@/hooks/api/use-role-definitions";
+import { useUsers } from "@/hooks/api/use-users";
+import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { getErrorMessage } from "@/lib/axios";
-import type { PermissionGrants, RoleDefinition } from "@/types/permission";
+import { PERMISSION_ACTIONS, PERMISSION_MODULES, type PermissionGrants, type RoleDefinition } from "@/types/permission";
+import type { User } from "@/types/user";
 
 import { grantSummary, PermissionEditor } from "./permission-editor";
+
+const PROTECTED_SUPERADMIN_EMAIL = "superadmin@sisbm.ci";
+
+const ALL_PERMISSIONS: PermissionGrants = Object.fromEntries(
+  PERMISSION_MODULES.map((module) => [module.key, [...PERMISSION_ACTIONS]]),
+);
 
 const same = (a: PermissionGrants, b: PermissionGrants) =>
   JSON.stringify(Object.entries(a).sort()) === JSON.stringify(Object.entries(b).sort());
 
-/** Écran 4 du §VI.2 : la matrice d'un rôle, modifiable pour un rôle personnalisé. */
-export function RolePermissionsPanel({
-  roles,
-  roleId,
-  onRoleChange,
-  onDuplicate,
-}: {
-  roles: RoleDefinition[];
-  roleId: string | undefined;
-  onRoleChange: (id: string) => void;
-  onDuplicate: (role: RoleDefinition) => void;
-}) {
-  const role = roles.find((r) => r.id === roleId) ?? roles[0];
-  const [draft, setDraft] = useState<PermissionGrants>(role?.grants ?? {});
-  const update = useUpdateRoleDefinition();
+function isProtectedSuperadmin(user: User) {
+  return user.email.trim().toLowerCase() === PROTECTED_SUPERADMIN_EMAIL;
+}
 
-  useEffect(() => {
-    setDraft(role?.grants ?? {});
-  }, [role]);
+function initialGrants(user: User, roles: RoleDefinition[]): PermissionGrants {
+  if (isProtectedSuperadmin(user)) return ALL_PERMISSIONS;
+  return roles.find((role) => role.id === user.roleId)?.grants ?? {};
+}
 
-  if (!role) return null;
-  const dirty = !role.isSystem && !same(draft, role.grants);
-  const summary = grantSummary(draft);
+/** Permissions individuelles du compte sélectionné, préremplies depuis son rôle. */
+export function RolePermissionsPanel({ roles }: { roles: RoleDefinition[] }) {
+  const [userSearch, setUserSearch] = useState("");
+  const debouncedSearch = useDebouncedValue(userSearch.trim());
+  const users = useUsers({ page: 1, perPage: 100, search: debouncedSearch || undefined });
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [savedByUser, setSavedByUser] = useState<Record<string, PermissionGrants>>({});
+  const [draft, setDraft] = useState<PermissionGrants>({});
+
+  const availableUsers = users.data?.data ?? [];
+  const userOptions = useMemo(
+    () =>
+      selectedUser && !availableUsers.some((user) => user.id === selectedUser.id)
+        ? [selectedUser, ...availableUsers]
+        : availableUsers,
+    [availableUsers, selectedUser],
+  );
+  const role = selectedUser ? roles.find((item) => item.id === selectedUser.roleId) : undefined;
+  const protectedUser = selectedUser ? isProtectedSuperadmin(selectedUser) : false;
+  const baseline = selectedUser ? (savedByUser[selectedUser.id] ?? initialGrants(selectedUser, roles)) : {};
+  const dirty = Boolean(selectedUser && !protectedUser && !same(draft, baseline));
+  const summary = selectedUser ? grantSummary(draft) : null;
+
+  function selectUser(id: string) {
+    const user = userOptions.find((option) => option.id === id);
+    if (!user || (dirty && !window.confirm("Abandonner les modifications non enregistrées ?"))) return;
+    setSelectedUser(user);
+    setDraft(savedByUser[user.id] ?? initialGrants(user, roles));
+  }
 
   function save() {
-    update.mutate(
-      { id: role.id, payload: { grants: draft } },
-      {
-        onSuccess: () => toast.success("Permissions enregistrées", { description: role.name }),
-        onError: (error) => toast.error("Enregistrement impossible", { description: getErrorMessage(error) }),
-      },
-    );
+    if (!selectedUser || protectedUser) return;
+    setSavedByUser((current) => ({ ...current, [selectedUser.id]: draft }));
+    toast.success("Permissions enregistrées pour cette session", {
+      description: `${selectedUser.fullName} — les changements ne sont pas envoyés à l’API.`,
+    });
+  }
+
+  function reset() {
+    if (!selectedUser) return;
+    setDraft(baseline);
   }
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-        <div className="flex flex-wrap items-center gap-3">
-          <Select
-            value={role.id}
-            onValueChange={(id) => {
-              if (dirty && !window.confirm("Abandonner les modifications non enregistrées ?")) return;
-              onRoleChange(id);
-            }}
-          >
-            <SelectTrigger className="min-w-64">
-              <span className="text-muted-foreground">Rôle :</span>
-              <SelectValue />
+      <FieldGroup className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">
+        <Field>
+          <FieldLabel htmlFor="permissions-user-search">Rechercher un utilisateur</FieldLabel>
+          <InputGroup>
+            <InputGroupInput
+              id="permissions-user-search"
+              placeholder="Nom ou adresse e-mail"
+              value={userSearch}
+              onChange={(event) => setUserSearch(event.target.value)}
+            />
+          </InputGroup>
+        </Field>
+        <Field data-disabled={users.isFetching || users.isError}>
+          <FieldLabel htmlFor="permissions-user-select">Utilisateur</FieldLabel>
+          <Select value={selectedUser?.id} onValueChange={selectUser} disabled={users.isFetching || users.isError}>
+            <SelectTrigger id="permissions-user-select" className="w-full">
+              <SelectValue placeholder="Sélectionner un utilisateur" />
             </SelectTrigger>
             <SelectContent position="popper">
               <SelectGroup>
-                {roles.map((r) => (
-                  <SelectItem key={r.id} value={r.id}>
-                    {r.name}
-                    {r.isSystem ? " · système" : ""}
+                {userOptions.map((user) => (
+                  <SelectItem key={user.id} value={user.id}>
+                    {user.fullName} — {user.email}
                   </SelectItem>
                 ))}
               </SelectGroup>
             </SelectContent>
           </Select>
-          <span className="text-muted-foreground text-sm tabular-nums">
-            {summary.modules} module(s) · {summary.actions} autorisation(s)
-          </span>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          {role.isSystem ? (
-            <Button variant="outline" size="sm" onClick={() => onDuplicate(role)}>
-              <Copy data-icon="inline-start" />
-              Dupliquer pour personnaliser
-            </Button>
-          ) : (
-            <>
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={!dirty || update.isPending}
-                onClick={() => setDraft(role.grants)}
-              >
-                <RotateCcw data-icon="inline-start" />
-                Annuler
-              </Button>
-              <Button size="sm" disabled={!dirty || update.isPending} onClick={save}>
-                {update.isPending ? <Spinner data-icon="inline-start" /> : <Save data-icon="inline-start" />}
-                Enregistrer
-              </Button>
-            </>
-          )}
-        </div>
-      </div>
+          {users.isFetching ? <p className="text-muted-foreground text-xs">Recherche des utilisateurs…</p> : null}
+          {users.data?.data.length === 0 ? (
+            <p className="text-muted-foreground text-xs">Aucun utilisateur trouvé.</p>
+          ) : null}
+        </Field>
+      </FieldGroup>
 
-      {role.isSystem ? (
+      {users.isError ? (
+        <Alert variant="destructive">
+          <AlertTitle>Utilisateurs indisponibles</AlertTitle>
+          <AlertDescription>{getErrorMessage(users.error)}</AlertDescription>
+        </Alert>
+      ) : null}
+
+      {!selectedUser ? (
         <Alert>
           <Lock />
-          <AlertTitle>Rôle système en lecture seule</AlertTitle>
+          <AlertTitle>Sélectionnez un utilisateur</AlertTitle>
           <AlertDescription>
-            <p>
-              Défini par la plateforme et traduit depuis ses permissions API :{" "}
-              <code className="text-xs">{role.apiPermissions.join(", ") || "aucune"}</code>. Dupliquez-le pour créer une
-              variante personnalisable.
-            </p>
+            Les permissions du compte s’afficheront après sélection. Le compte Superadmin SISBM est protégé.
           </AlertDescription>
         </Alert>
       ) : null}
 
-      <PermissionEditor grants={draft} onChange={role.isSystem ? undefined : setDraft} />
-      <p className="text-muted-foreground text-xs">
-        Cocher une action coche aussi « Consultation » ; décocher « Consultation » retire tout le module. Les
-        permissions seront vérifiées côté serveur, pas seulement dans l'interface (§VI.4).
-      </p>
+      {selectedUser && summary ? (
+        <>
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="grid gap-0.5">
+                <span className="font-medium">{selectedUser.fullName}</span>
+                <span className="text-muted-foreground text-xs">
+                  {selectedUser.email} · {role?.name ?? selectedUser.role?.name ?? "Rôle non chargé"}
+                </span>
+              </div>
+              <span className="text-muted-foreground text-sm tabular-nums">
+                {summary.modules} module(s) · {summary.actions} autorisation(s)
+              </span>
+            </div>
+            {protectedUser ? null : (
+              <div className="flex flex-wrap items-center gap-2">
+                <Button variant="outline" size="sm" disabled={!dirty} onClick={reset}>
+                  <RotateCcw data-icon="inline-start" />
+                  Annuler
+                </Button>
+                <Button size="sm" disabled={!dirty} onClick={save}>
+                  <Save data-icon="inline-start" />
+                  Enregistrer
+                </Button>
+              </div>
+            )}
+          </div>
+
+          {protectedUser ? (
+            <Alert>
+              <Lock />
+              <AlertTitle>Superadmin SISBM — accès complet et protégé</AlertTitle>
+              <AlertDescription>
+                Toutes les permissions sont accordées et ne peuvent pas être modifiées depuis cette page.
+              </AlertDescription>
+            </Alert>
+          ) : (
+            <Alert>
+              <AlertTitle>Permissions individuelles — mode démonstration</AlertTitle>
+              <AlertDescription>
+                Les droits de {selectedUser.fullName} sont initialisés à partir de son rôle quand il est disponible,
+                puis modifiables sans changer ceux des autres utilisateurs. L’enregistrement est temporaire et n’est pas
+                encore envoyé à l’API.
+              </AlertDescription>
+            </Alert>
+          )}
+
+          <PermissionEditor grants={draft} onChange={protectedUser ? undefined : setDraft} />
+          <p className="text-muted-foreground text-xs">
+            Chaque action est indépendante. « Tout » active ou retire toutes les actions de la ligne.
+          </p>
+        </>
+      ) : null}
     </div>
   );
 }

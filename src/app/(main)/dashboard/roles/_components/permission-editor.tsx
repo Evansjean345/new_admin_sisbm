@@ -42,22 +42,27 @@ export function PermissionEditor({
   }
 
   function toggle(moduleKey: string, action: PermissionAction, checked: boolean) {
-    const current = grants[moduleKey] ?? [];
-    let next = checked ? [...current, action] : current.filter((a) => a !== action);
-    // Toute action suppose la consultation ; retirer la consultation retire tout.
-    if (checked && action !== "read" && !next.includes("read")) next = [...next, "read"];
-    if (!checked && action === "read") next = [];
-    set(moduleKey, next);
+    const next = new Set(grants[moduleKey] ?? []);
+    if (checked) next.add(action);
+    else next.delete(action);
+    set(
+      moduleKey,
+      PERMISSION_ACTIONS.filter((permissionAction) => next.has(permissionAction)),
+    );
   }
 
   return (
     <div className="overflow-x-auto rounded-xl border">
-      <Table className="min-w-[860px] **:data-[slot='table-cell']:px-3 **:data-[slot='table-head']:px-3">
+      <Table className="min-w-[1116px] table-fixed **:data-[slot='table-cell']:px-3 **:data-[slot='table-head']:px-3">
+        <colgroup>
+          <col className="w-[220px]" />
+          <col span={PERMISSION_ACTIONS.length + 1} className="w-[112px]" />
+        </colgroup>
         <TableHeader>
           <TableRow className="hover:bg-transparent">
             <TableHead className="min-w-52">Module</TableHead>
             {PERMISSION_ACTIONS.map((a) => (
-              <TableHead key={a} className="text-center text-xs leading-tight whitespace-normal">
+              <TableHead key={a} className="whitespace-normal text-center text-xs leading-tight">
                 {permissionActionLabels[a]}
               </TableHead>
             ))}
@@ -78,6 +83,7 @@ export function PermissionEditor({
               {modules.map((m) => {
                 const granted = grants[m.key] ?? [];
                 const full = granted.length === PERMISSION_ACTIONS.length;
+                const allActionsState = full || (granted.length > 0 && "indeterminate");
                 return (
                   <TableRow key={m.key}>
                     <TableCell className="font-medium">{m.label}</TableCell>
@@ -95,7 +101,7 @@ export function PermissionEditor({
                     <TableCell className="text-center">
                       <Checkbox
                         className="align-middle"
-                        checked={full ? true : granted.length > 0 ? "indeterminate" : false}
+                        checked={allActionsState}
                         disabled={readOnly}
                         onCheckedChange={(c) => set(m.key, c === true ? [...PERMISSION_ACTIONS] : [])}
                         aria-label={`${m.label} : toutes les actions`}
