@@ -27,9 +27,7 @@ import { useNotificationTemplates, useSaveNotificationConfig } from "@/hooks/api
 import { useVehicles } from "@/hooks/api/use-vehicles";
 import { getErrorMessage } from "@/lib/axios";
 import {
-  EVENT_TYPES,
   type EventType,
-  NOTIFICATION_CHANNELS,
   type NotificationChannel,
   type NotificationConfig,
   type NotificationConfigPayload,
@@ -37,6 +35,9 @@ import {
   SEVERITIES,
   type Severity,
 } from "@/types/alerting";
+import { RULE_FORM_EVENT_TYPES } from "@/types/client-rules";
+
+const CONFIGURABLE_NOTIFICATION_CHANNELS: readonly NotificationChannel[] = ["sms", "email"];
 
 const EMPTY: NotificationConfigPayload = {
   name: "",
@@ -75,7 +76,10 @@ export function NotificationConfigDialog({
     if (!open) return;
     if (config) {
       const { id: _id, organization: _org, updatedAt: _u, ...rest } = config;
-      setForm(rest);
+      setForm({
+        ...rest,
+        channels: rest.channels.filter((channel) => CONFIGURABLE_NOTIFICATION_CHANNELS.includes(channel)),
+      });
     } else setForm(EMPTY);
     setDraft("");
   }, [open, config]);
@@ -130,14 +134,25 @@ export function NotificationConfigDialog({
           </Field>
           <div className="grid gap-4 sm:grid-cols-2">
             <Field className="gap-1.5">
-              <FieldLabel htmlFor="nc-trigger">Événement déclencheur</FieldLabel>
+              <FieldLabel htmlFor="nc-client">Organisation</FieldLabel>
+              <OrganizationSelect
+                id="nc-client"
+                className="w-full"
+                allowAll
+                placeholder="Toutes les organisations"
+                value={form.organizationId ?? undefined}
+                onChange={(id) => setForm((f) => ({ ...f, organizationId: id ?? null, vehicleIds: [] }))}
+              />
+            </Field>
+            <Field className="gap-1.5">
+              <FieldLabel htmlFor="nc-trigger">Règle déclencheur</FieldLabel>
               <Select value={form.trigger} onValueChange={(v) => set("trigger", v as EventType)}>
                 <SelectTrigger id="nc-trigger" className="w-full">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent position="popper" className="max-h-72">
                   <SelectGroup>
-                    {EVENT_TYPES.map((t) => (
+                    {RULE_FORM_EVENT_TYPES.map((t) => (
                       <SelectItem key={t} value={t}>
                         {eventTypeLabels[t]}
                       </SelectItem>
@@ -162,17 +177,6 @@ export function NotificationConfigDialog({
                   </SelectGroup>
                 </SelectContent>
               </Select>
-            </Field>
-            <Field className="gap-1.5">
-              <FieldLabel htmlFor="nc-client">Client concerné</FieldLabel>
-              <OrganizationSelect
-                id="nc-client"
-                className="w-full"
-                allowAll
-                placeholder="Tous les clients"
-                value={form.organizationId ?? undefined}
-                onChange={(id) => setForm((f) => ({ ...f, organizationId: id ?? null, vehicleIds: [] }))}
-              />
             </Field>
             <Field className="gap-1.5">
               <FieldLabel htmlFor="nc-vehicles">Véhicules concernés</FieldLabel>
@@ -230,7 +234,7 @@ export function NotificationConfigDialog({
           <FieldSet>
             <FieldLegend variant="label">Canaux</FieldLegend>
             <div className="flex flex-wrap gap-4">
-              {NOTIFICATION_CHANNELS.map((c) => (
+              {CONFIGURABLE_NOTIFICATION_CHANNELS.map((c) => (
                 <Field key={c} orientation="horizontal" className="w-auto">
                   <Checkbox
                     id={`nc-ch-${c}`}
@@ -238,7 +242,7 @@ export function NotificationConfigDialog({
                     onCheckedChange={(v) =>
                       set(
                         "channels",
-                        v === true ? [...form.channels, c] : form.channels.filter((x: NotificationChannel) => x !== c),
+                        v === true ? [...form.channels, c] : form.channels.filter((x) => x !== c),
                       )
                     }
                   />
@@ -248,6 +252,11 @@ export function NotificationConfigDialog({
                 </Field>
               ))}
             </div>
+            {form.channels.length === 0 ? (
+              <FieldDescription role="alert">
+                Sélectionnez SMS ou e-mail pour enregistrer cette configuration.
+              </FieldDescription>
+            ) : null}
           </FieldSet>
 
           <Field className="gap-1.5">

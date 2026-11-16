@@ -24,8 +24,10 @@ import {
   alertStatusMeta,
   eventTypeLabels,
   incidentCategoryLabels,
+  incidentEventLabels,
   incidentSourceLabels,
   incidentStatusMeta,
+  incidentTypeLabels,
   severityMeta,
 } from "@/components/alerting-labels";
 import { ConfirmDialog } from "@/components/confirm-dialog";
@@ -106,7 +108,8 @@ export function IncidentDetail({ id }: { id: string }) {
             ) : null}
           </div>
           <p className="text-muted-foreground text-sm">
-            {incidentCategoryLabels[inc.category]} · {inc.organization.name}
+            {incidentEventLabels[inc.event]} · {incidentCategoryLabels[inc.eventCategory]} ·{" "}
+            {incidentTypeLabels[inc.incidentType]} · {inc.organization.name}
             {inc.vehicle ? ` · ${inc.vehicle.registration}` : ""}
           </p>
         </div>
@@ -207,7 +210,9 @@ export function IncidentDetail({ id }: { id: string }) {
                     ),
                   },
                   { label: "Conducteur", value: inc.driver?.name ?? "—" },
-                  { label: "Catégorie", value: incidentCategoryLabels[inc.category] },
+                  { label: "Catégorie d'événement", value: incidentCategoryLabels[inc.eventCategory] },
+                  { label: "Événement", value: incidentEventLabels[inc.event] },
+                  { label: "Type d'incident", value: incidentTypeLabels[inc.incidentType] },
                   { label: "Priorité", value: severityMeta[inc.priority].label },
                   { label: "Source", value: incidentSourceLabels[inc.source] },
                   { label: "Date de l'incident", value: formatDateTime(inc.occurredAt) },

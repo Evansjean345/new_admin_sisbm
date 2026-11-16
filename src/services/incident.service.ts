@@ -6,11 +6,11 @@ import type { Attachment } from "@/types/billing";
 import type {
   CreateIncidentPayload,
   Incident,
-  IncidentCategory,
   IncidentListParams,
   IncidentStats,
   IncidentStatus,
 } from "@/types/incident";
+import { INCIDENT_CLASSIFICATION_BY_ALERT_EVENT } from "@/types/incident";
 
 import { alertingDb, alertingService, historyEntry } from "./alerting.service";
 
@@ -63,15 +63,9 @@ async function db(): Promise<Incident[]> {
       "closed",
       "in_progress",
     ];
-    const categories: Record<string, IncidentCategory> = {
-      sos: "sos",
-      power_cut: "tamper",
-      jamming: "theft",
-      towing: "theft",
-      tamper: "tamper",
-    };
     critical.forEach((a, i) => {
       const status = statuses[i % statuses.length];
+      const classification = INCIDENT_CLASSIFICATION_BY_ALERT_EVENT[a.eventType];
       const incident: Incident = {
         id: mockId(),
         reference: nextRef(),
@@ -80,7 +74,7 @@ async function db(): Promise<Incident[]> {
         vehicleId: a.vehicleId,
         vehicle: a.vehicle,
         driver: null,
-        category: categories[a.eventType] ?? "other",
+        ...classification,
         priority: "critical",
         occurredAt: a.occurredAt,
         description: `Incident ouvert automatiquement suite à l'alerte ${a.reference} (${a.ruleName ?? "événement GPS"}).`,
@@ -156,9 +150,12 @@ export const incidentService = {
       .filter(
         (i) =>
           (!params.organizationId || i.organizationId === params.organizationId) &&
-          (!params.status || i.status === params.status) &&
+          (!params.status ||
+            (params.status === "open"
+              ? i.status !== "resolved" && i.status !== "closed"
+              : i.status === params.status)) &&
           (!params.priority || i.priority === params.priority) &&
-          (!params.category || i.category === params.category) &&
+          (!params.eventCategory || i.eventCategory === params.eventCategory) &&
           (!q ||
             i.reference.toLowerCase().includes(q) ||
             i.organization.name.toLowerCase().includes(q) ||
@@ -168,14 +165,16 @@ export const incidentService = {
     return mockPaginate(rows, params);
   },
 
-  async stats(): Promise<IncidentStats> {
+  async stats(organizationId?: string): Promise<IncidentStats> {
     await mockDelay(150);
-    const all = await db();
+    const all = (await db()).filter((i) => !organizationId || i.organizationId === organizationId);
     const count = (s: IncidentStatus) => all.filter((i) => i.status === s).length;
     return {
       total: all.length,
       new: count("new"),
-      critical: all.filter((i) => i.priority === "critical" && i.status !== "closed").length,
+      critical: all.filter(
+        (i) => i.priority === "critical" && i.status !== "resolved" && i.status !== "closed",
+      ).length,
       assigned: count("assigned"),
       inProgress: count("in_progress"),
       onHold: count("on_hold"),
@@ -216,7 +215,9 @@ export const incidentService = {
       vehicleId: vehicle?.id ?? null,
       vehicle,
       driver: payload.driver ?? null,
-      category: payload.category,
+      eventCategory: payload.eventCategory,
+      event: payload.event,
+      incidentType: payload.incidentType,
       priority: payload.priority,
       occurredAt: payload.occurredAt,
       description: payload.description.trim(),

@@ -20,7 +20,7 @@ import { AuditLogPanel } from "../../../_components/audit/audit-log-panel";
 import { OrganizationFormDialog } from "../../_components/organization-form-dialog";
 import { OrganizationRowActions } from "../../_components/organization-row-actions";
 import { ClientProfileCard } from "./client-profile-card";
-import { ClientRubricsCard, OrganizationBillingCard, OrganizationClientOffersCard } from "./organization-billing-cards";
+import { OrganizationBillingCard, OrganizationClientOffersCard } from "./organization-billing-cards";
 import { OrganizationRolesCard } from "./organization-roles-card";
 import { OrganizationSubscriptionsCard } from "./organization-subscriptions-card";
 import { OrganizationUsersCard } from "./organization-users-card";
@@ -105,8 +105,6 @@ export function OrganizationDetail({ id }: { id: string }) {
           }
         />
       </div>
-
-      <ClientRubricsCard organizationId={data.id} />
 
       <Tabs defaultValue="identity">
         <TabsList className="!h-auto flex-wrap justify-start">

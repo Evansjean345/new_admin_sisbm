@@ -25,8 +25,11 @@ export function useIncident(id: string | undefined) {
   });
 }
 
-export function useIncidentStats() {
-  return useQuery({ queryKey: queryKeys.incidents.stats, queryFn: () => incidentService.stats() });
+export function useIncidentStats(organizationId?: string) {
+  return useQuery({
+    queryKey: [...queryKeys.incidents.stats, organizationId ?? null],
+    queryFn: () => incidentService.stats(organizationId),
+  });
 }
 
 function useIncidentMutation<TArgs, TResult>(fn: (args: TArgs) => Promise<TResult>) {

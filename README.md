@@ -125,6 +125,17 @@ _Deploy your own copy with one click._
 
 Your app will be running at [http://localhost:3000](http://localhost:3000)
 
+### Search for places in geographic zones
+
+The zone map uses Nominatim by default. Searches are sent only when the user submits the form; the application does not
+use autocomplete. The search term is sent to OpenStreetMap, so do not enter personal or confidential information.
+
+The public Nominatim service has a maximum of one request per second per application. The server route rate-limits
+requests and caches results per running instance. For a different Nominatim-compatible service, set
+`NOMINATIM_BASE_URL` to its base URL (default: `https://nominatim.openstreetmap.org`). If the application runs on
+multiple server instances or needs higher search volume, use a shared rate limiter/cache or a geocoding service
+appropriate for that volume. See the [Nominatim usage policy](https://operations.osmfoundation.org/policies/nominatim/).
+
 ### Formatting and Linting
 
 Format, lint, and organize imports

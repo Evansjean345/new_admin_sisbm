@@ -7,15 +7,21 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import { ArrowLeft } from "lucide-react";
 
+import { OrganizationSelect } from "@/app/(main)/dashboard/_components/organization/organization-select";
 import { ErrorState } from "@/components/query-state";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Field, FieldLabel } from "@/components/ui/field";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useFleet, useTrack } from "@/hooks/api/use-fleet";
+import { useGroupMembers, useVehicleGroups } from "@/hooks/api/use-groups";
 import { useVehicle } from "@/hooks/api/use-vehicles";
+import { getErrorMessage } from "@/lib/axios";
 import { toNumber } from "@/lib/format";
 import { summarizeTrack, toSegments } from "@/lib/track";
 import type { VehicleDetail } from "@/types/vehicle";
@@ -45,8 +51,16 @@ export function Fleet({ vehicleId, organizationId }: FleetProps) {
 
   // `?organizationId=` : supervision d'un client ouverte depuis sa fiche (accès contextualisé).
   const scopedOrganizationId = organizationId ?? searchParams.get("organizationId") ?? undefined;
-  const fleet = useFleet(!single, scopedOrganizationId);
+  const [filterOrganizationId, setFilterOrganizationId] = useState<string | undefined>();
+  const [selectedFleetId, setSelectedFleetId] = useState<string | undefined>();
+  const activeOrganizationId = scopedOrganizationId ?? filterOrganizationId;
+  const fleet = useFleet(!single, activeOrganizationId);
   const singleVehicle = useVehicle(vehicleId);
+  const vehicleGroups = useVehicleGroups(
+    { organizationId: activeOrganizationId, page: 1, perPage: 100 },
+    { enabled: !single && Boolean(activeOrganizationId) },
+  );
+  const fleetMembers = useGroupMembers("vehicle_group", selectedFleetId);
   const selectedId = vehicleId ?? searchParams.get("vehicle");
 
   const [period, setPeriod] = useState<TrackPeriod>("today");
@@ -58,9 +72,17 @@ export function Fleet({ vehicleId, organizationId }: FleetProps) {
   const [sideTab, setSideTab] = useState<"alerts" | "vehicles">("alerts");
 
   const allVehicles: VehicleDetail[] = useMemo(() => {
-    if (!single) return fleet.vehicles;
+    if (!single) {
+      const organizationVehicles = activeOrganizationId
+        ? fleet.vehicles.filter((vehicle) => vehicle.organizationId === activeOrganizationId)
+        : fleet.vehicles;
+      if (!selectedFleetId) return organizationVehicles;
+      if (!fleetMembers.data) return [];
+      const memberIds = new Set(fleetMembers.data.map((member) => member.id));
+      return organizationVehicles.filter((vehicle) => memberIds.has(vehicle.id));
+    }
     return singleVehicle.data ? [singleVehicle.data] : [];
-  }, [single, fleet.vehicles, singleVehicle.data]);
+  }, [single, activeOrganizationId, fleet.vehicles, selectedFleetId, fleetMembers.data, singleVehicle.data]);
 
   const visibleVehicles = useMemo(
     () =>
@@ -104,6 +126,25 @@ export function Fleet({ vehicleId, organizationId }: FleetProps) {
     [single, searchParams, router, pathname],
   );
 
+  const changeOrganizationFilter = (id: string | undefined) => {
+    setFilterOrganizationId(id);
+    setSelectedFleetId(undefined);
+    select(null);
+  };
+
+  const changeFleetFilter = (id: string | undefined) => {
+    setSelectedFleetId(id);
+    select(null);
+  };
+
+  const filterLoading = Boolean(selectedFleetId) && fleetMembers.isPending;
+  const availableGroups = vehicleGroups.isPlaceholderData ? [] : (vehicleGroups.data?.data ?? []);
+  const filterError = vehicleGroups.isError
+    ? getErrorMessage(vehicleGroups.error)
+    : selectedFleetId && fleetMembers.isError
+      ? getErrorMessage(fleetMembers.error)
+      : null;
+
   function toggleCategory(category: FleetCategory) {
     setHidden((prev) => {
       const next = new Set(prev);
@@ -116,6 +157,7 @@ export function Fleet({ vehicleId, organizationId }: FleetProps) {
   const refresh = () => {
     if (single) void singleVehicle.refetch();
     else fleet.refetch();
+    if (selectedFleetId) void fleetMembers.refetch();
     void track.refetch();
   };
 
@@ -164,8 +206,76 @@ export function Fleet({ vehicleId, organizationId }: FleetProps) {
           </Button>
         </div>
       ) : (
-        <FleetKpis vehicles={fleet.vehicles} total={fleet.total} loading={fleet.isPending} />
+        <FleetKpis
+          vehicles={allVehicles}
+          total={selectedFleetId ? allVehicles.length : fleet.total}
+          loading={fleet.isPending || filterLoading}
+        />
       )}
+
+      {!single ? (
+        <div className="flex flex-wrap items-end justify-end gap-3">
+          {!scopedOrganizationId ? (
+            <Field className="w-full gap-1.5 sm:w-56">
+              <FieldLabel htmlFor="fleet-organization-filter">Client</FieldLabel>
+              <OrganizationSelect
+                id="fleet-organization-filter"
+                allowAll
+                value={filterOrganizationId}
+                onChange={changeOrganizationFilter}
+                className="w-full"
+                placeholder="Tous les clients"
+              />
+            </Field>
+          ) : null}
+          <Field className="w-full gap-1.5 sm:w-56">
+            <FieldLabel htmlFor="fleet-group-filter">Flotte</FieldLabel>
+            <Select
+              value={activeOrganizationId ? (selectedFleetId ?? "__all_vehicles__") : ""}
+              onValueChange={(id) => changeFleetFilter(id === "__all_vehicles__" ? undefined : id)}
+              disabled={
+                !activeOrganizationId ||
+                vehicleGroups.isPending ||
+                vehicleGroups.isPlaceholderData ||
+                vehicleGroups.isError ||
+                availableGroups.length === 0
+              }
+            >
+              <SelectTrigger id="fleet-group-filter" className="w-full">
+                <SelectValue
+                  placeholder={
+                    !activeOrganizationId
+                      ? "Choisissez d'abord un client"
+                      : vehicleGroups.isPending || vehicleGroups.isPlaceholderData
+                        ? "Chargement des flottes…"
+                        : "Toutes les flottes"
+                  }
+                />
+              </SelectTrigger>
+              <SelectContent position="popper" align="end">
+                <SelectGroup>
+                  <SelectItem value="__all_vehicles__">Tous les véhicules du client</SelectItem>
+                  {availableGroups.map((group) => (
+                    <SelectItem key={group.id} value={group.id}>
+                      {group.name} · {group.membersCount} véhicule(s)
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+          </Field>
+          {filterLoading ? (
+            <p className="text-muted-foreground text-sm" role="status">
+              Chargement des véhicules de la flotte…
+            </p>
+          ) : null}
+          {filterError ? (
+            <Alert variant="destructive" className="basis-full">
+              <AlertDescription>{filterError}</AlertDescription>
+            </Alert>
+          ) : null}
+        </div>
+      ) : null}
 
       <div className="grid gap-4 xl:h-[calc(100dvh-var(--dashboard-header-height)-12rem)] xl:min-h-[600px] xl:grid-cols-[minmax(0,1fr)_380px]">
         <FleetMapCard
@@ -183,7 +293,9 @@ export function Fleet({ vehicleId, organizationId }: FleetProps) {
           onTypeFilterChange={setTypeFilter}
           hiddenCategories={hidden}
           onToggleCategory={toggleCategory}
-          refreshing={fleet.isFetching || singleVehicle.isFetching || track.isFetching}
+          refreshing={
+            fleet.isFetching || singleVehicle.isFetching || fleetMembers.isFetching || track.isFetching
+          }
           onRefresh={refresh}
         />
 
@@ -215,7 +327,7 @@ export function Fleet({ vehicleId, organizationId }: FleetProps) {
             <CardContent className="min-h-0 flex-1 px-0">
               <ScrollArea className="h-[420px] xl:h-full">
                 <div className="px-4 pb-2">
-                  {fleet.isPending ? (
+                  {fleet.isPending || filterLoading ? (
                     <div className="flex flex-col gap-2.5">
                       {Array.from({ length: 5 }, (_, i) => (
                         // biome-ignore lint/suspicious/noArrayIndexKey: squelettes statiques
@@ -224,8 +336,20 @@ export function Fleet({ vehicleId, organizationId }: FleetProps) {
                     </div>
                   ) : fleet.isError ? (
                     <ErrorState error={fleet.error} onRetry={fleet.refetch} />
+                  ) : filterError ? (
+                    <p className="text-destructive text-sm">Impossible de charger les véhicules pour ce filtre.</p>
                   ) : sideTab === "alerts" ? (
-                    <FleetAlerts alerts={alerts} onSelect={(id) => select(id)} />
+                    allVehicles.length === 0 ? (
+                      <p className="text-muted-foreground text-sm">
+                        {selectedFleetId
+                          ? "Aucun véhicule actif dans cette flotte."
+                          : activeOrganizationId
+                            ? "Aucun véhicule actif pour ce client."
+                            : "Aucun véhicule actif dans le périmètre sélectionné."}
+                      </p>
+                    ) : (
+                      <FleetAlerts alerts={alerts} onSelect={(id) => select(id)} />
+                    )
                   ) : (
                     <FleetVehicleList
                       vehicles={visibleVehicles}

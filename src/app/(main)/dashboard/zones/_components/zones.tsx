@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type FormEvent } from "react";
 
-import { Circle, Hexagon, MapPinned, Pencil, Plus, Undo2, X } from "lucide-react";
+import { Circle, Hexagon, MapPinned, Pencil, Plus, Search, Undo2, X } from "lucide-react";
 import { toast } from "sonner";
 
 import {
@@ -26,6 +26,7 @@ import { useGeofences, useSaveGeofence, useToggleClientRule } from "@/hooks/api/
 import { useVehicles } from "@/hooks/api/use-vehicles";
 import { getErrorMessage } from "@/lib/axios";
 import type { Geofence, GeofencePayload, GeofenceShape } from "@/types/client-rules";
+import type { PlaceSearchResult } from "@/types/geocoding";
 
 import { ZonesMap } from "./zones-map";
 
@@ -53,6 +54,32 @@ const emptyDraft = (organizationId: string): GeofencePayload => ({
   active: true,
 });
 
+function isPlaceSearchResult(value: unknown): value is PlaceSearchResult {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "id" in value &&
+    typeof value.id === "string" &&
+    "name" in value &&
+    typeof value.name === "string" &&
+    "displayName" in value &&
+    typeof value.displayName === "string" &&
+    "lat" in value &&
+    typeof value.lat === "number" &&
+    Number.isFinite(value.lat) &&
+    "lng" in value &&
+    typeof value.lng === "number" &&
+    Number.isFinite(value.lng)
+  );
+}
+
+function getSearchError(payload: unknown) {
+  if (typeof payload === "object" && payload !== null && "error" in payload && typeof payload.error === "string") {
+    return payload.error;
+  }
+  return "La recherche n’a pas pu aboutir. Réessayez.";
+}
+
 /**
  * Zones géographiques (rubrique client). Même écran pour la plateforme Client et la fiche client
  * du SuperAdmin : `organizationId` fixe le client et masque le filtre.
@@ -64,7 +91,12 @@ export function Zones({ organizationId: scoped }: { organizationId?: string } = 
   const save = useSaveGeofence();
   const toggle = useToggleClientRule();
   const [draft, setDraft] = useState<{ payload: GeofencePayload; id?: string } | null>(null);
+  const [radiusInput, setRadiusInput] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [placeQuery, setPlaceQuery] = useState("");
+  const [placeSearchPending, setPlaceSearchPending] = useState(false);
+  const [placeSearchResults, setPlaceSearchResults] = useState<PlaceSearchResult[]>([]);
+  const [mapPlace, setMapPlace] = useState<PlaceSearchResult | null>(null);
   const vehicles = useVehicles(
     { organizationId: draft?.payload.organizationId ? draft.payload.organizationId : undefined, perPage: 100 },
     { enabled: Boolean(draft?.payload.organizationId) },
@@ -72,13 +104,56 @@ export function Zones({ organizationId: scoped }: { organizationId?: string } = 
 
   const rows = zones.data ?? [];
   const p = draft?.payload;
+  async function searchPlace(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const query = placeQuery.trim();
+    if (!query || placeSearchPending) return;
+
+    setPlaceSearchPending(true);
+    setPlaceSearchResults([]);
+    setMapPlace(null);
+    setSelectedId(null);
+
+    try {
+      const response = await fetch("/api/geocode", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query }),
+      });
+      const payload: unknown = await response.json();
+      if (!response.ok) throw new Error(getSearchError(payload));
+      if (!Array.isArray(payload)) {
+        throw new Error("La réponse du service de recherche est invalide.");
+      }
+      const results = payload.filter(isPlaceSearchResult);
+      if (results.length !== payload.length) {
+        throw new Error("La réponse du service de recherche est invalide.");
+      }
+      if (results.length === 0) {
+        toast.error("Aucun lieu trouvé", { description: "Essayez une recherche plus précise." });
+        return;
+      }
+
+      setPlaceSearchResults(results);
+      setMapPlace(results[0]);
+    } catch (error) {
+      toast.error("Recherche de lieu impossible", {
+        description: error instanceof Error ? error.message : "Vérifiez votre connexion puis réessayez.",
+      });
+    } finally {
+      setPlaceSearchPending(false);
+    }
+  }
+
   const set = <K extends keyof GeofencePayload>(k: K, v: GeofencePayload[K]) =>
     setDraft((d) => (d ? { ...d, payload: { ...d.payload, [k]: v } } : d));
 
   function edit(z: Geofence) {
     const { id, organization: _o, updatedAt: _u, ...payload } = z;
     setDraft({ payload, id });
+    setRadiusInput(String(payload.radiusM ?? ""));
     setSelectedId(id);
+    setMapPlace(null);
   }
 
   function submit() {
@@ -105,7 +180,13 @@ export function Zones({ organizationId: scoped }: { organizationId?: string } = 
           actions={
             <>
               <OrganizationFilter value={filterOrg} onChange={setFilterOrg} />
-              <Button onClick={() => setDraft({ payload: emptyDraft(organizationId ?? "") })}>
+              <Button
+                onClick={() => {
+                  const payload = emptyDraft(organizationId ?? "");
+                  setRadiusInput(String(payload.radiusM ?? ""));
+                  setDraft({ payload });
+                }}
+              >
                 <Plus data-icon="inline-start" />
                 Nouvelle zone
               </Button>
@@ -115,7 +196,13 @@ export function Zones({ organizationId: scoped }: { organizationId?: string } = 
       )}
       {scoped ? (
         <div className="flex justify-end">
-          <Button onClick={() => setDraft({ payload: emptyDraft(scoped) })}>
+          <Button
+            onClick={() => {
+              const payload = emptyDraft(scoped);
+              setRadiusInput(String(payload.radiusM ?? ""));
+              setDraft({ payload });
+            }}
+          >
             <Plus data-icon="inline-start" />
             Nouvelle zone
           </Button>
@@ -129,11 +216,63 @@ export function Zones({ organizationId: scoped }: { organizationId?: string } = 
         </AlertDescription>
       </Alert>
 
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_24rem]">
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_24rem]">
         <Card className="overflow-hidden p-0">
+          <CardContent className="flex flex-col gap-2 p-3">
+            <form className="flex items-start gap-2" onSubmit={searchPlace}>
+              <FieldGroup className="min-w-0 flex-1 gap-0">
+                <Field className="gap-1">
+                  <FieldLabel htmlFor="zone-place-search" className="sr-only">
+                    Rechercher un lieu sur la carte
+                  </FieldLabel>
+                  <Input
+                    id="zone-place-search"
+                    value={placeQuery}
+                    onChange={(event) => setPlaceQuery(event.target.value)}
+                    placeholder="Rechercher une adresse ou un lieu"
+                    autoComplete="off"
+                  />
+                  <FieldDescription className="text-xs">
+                    Recherche transmise à{" "}
+                    <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">
+                      OpenStreetMap
+                    </a>
+                    .
+                  </FieldDescription>
+                </Field>
+              </FieldGroup>
+              <Button type="submit" disabled={placeSearchPending || !placeQuery.trim()}>
+                {placeSearchPending ? <Spinner data-icon="inline-start" /> : <Search data-icon="inline-start" />}
+                {placeSearchPending ? "Recherche…" : "Rechercher"}
+              </Button>
+            </form>
+            {placeSearchResults.length > 1 ? (
+              <ul className="flex max-h-36 flex-col gap-1 overflow-y-auto">
+                {placeSearchResults.map((result) => (
+                  <li key={result.id}>
+                    <Button
+                      type="button"
+                      variant={mapPlace?.id === result.id ? "secondary" : "ghost"}
+                      className="h-auto w-full flex-col items-start gap-1 whitespace-normal px-2 py-2 text-left"
+                      aria-pressed={mapPlace?.id === result.id}
+                      onClick={() => setMapPlace(result)}
+                    >
+                      <span className="w-full truncate font-medium">{result.name}</span>
+                      <span className="w-full truncate text-muted-foreground text-xs">{result.displayName}</span>
+                    </Button>
+                  </li>
+                ))}
+              </ul>
+            ) : placeSearchResults.length === 1 ? (
+              <p className="text-muted-foreground text-xs" role="status">
+                Carte centrée sur : {placeSearchResults[0].displayName}
+              </p>
+            ) : null}
+          </CardContent>
           <div className="h-[480px] xl:h-[620px]">
             <ZonesMap
               zones={rows}
+              searchLocation={mapPlace}
               draft={
                 p
                   ? {
@@ -149,7 +288,10 @@ export function Zones({ organizationId: scoped }: { organizationId?: string } = 
                   : null
               }
               selectedId={selectedId}
-              onSelect={(id) => setSelectedId(id)}
+              onSelect={(id) => {
+                setSelectedId(id);
+                setMapPlace(null);
+              }}
               onPick={(pt) => {
                 if (!draft) return;
                 if (draft.payload.shape === "circle") set("center", pt);
@@ -216,8 +358,13 @@ export function Zones({ organizationId: scoped }: { organizationId?: string } = 
                       id="gf-radius"
                       type="number"
                       min={50}
-                      value={p.radiusM ?? 0}
-                      onChange={(e) => set("radiusM", Number(e.target.value) || 0)}
+                      value={radiusInput}
+                      onChange={(e) => {
+                        const rawValue = e.target.value;
+                        setRadiusInput(rawValue);
+                        const numericValue = rawValue === "" ? null : Number(rawValue);
+                        if (numericValue === null || Number.isFinite(numericValue)) set("radiusM", numericValue);
+                      }}
                     />
                     <FieldDescription>
                       {p.center ? `Centre : ${p.center.lat}, ${p.center.lng}` : "Centre non placé."}

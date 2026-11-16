@@ -24,7 +24,13 @@ import {
   OrganizationCell,
   OrganizationFilter,
 } from "@/app/(main)/dashboard/_components/organization/organization-select";
-import { incidentCategoryLabels, incidentStatusMeta, severityMeta } from "@/components/alerting-labels";
+import {
+  incidentCategoryLabels,
+  incidentEventLabels,
+  incidentStatusMeta,
+  incidentTypeLabels,
+  severityMeta,
+} from "@/components/alerting-labels";
 import { MetricCard } from "@/components/metric-card";
 import { PageHeader } from "@/components/page-header";
 import { PaginationBar } from "@/components/pagination-bar";
@@ -40,21 +46,34 @@ import { useIncidentStats, useIncidents } from "@/hooks/api/use-incidents";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { downloadCsv, formatDateTime } from "@/lib/format";
 import { SEVERITIES, type Severity } from "@/types/alerting";
-import { INCIDENT_CATEGORIES, INCIDENT_STATUSES, type IncidentCategory, type IncidentStatus } from "@/types/incident";
+import {
+  INCIDENT_EVENT_CATEGORIES,
+  INCIDENT_STATUSES,
+  type IncidentEventCategory,
+  type IncidentStatus,
+} from "@/types/incident";
 
 const ALL = "all";
+type IncidentStatusFilter = IncidentStatus | "open" | typeof ALL;
+const statusOptions: Array<[string, string]> = [
+  ["open", "Ouverts"],
+  ...INCIDENT_STATUSES.map((status): [string, string] => [status, incidentStatusMeta[status].label]),
+];
+const eventCategoryOptions = INCIDENT_EVENT_CATEGORIES.map(
+  (category): [string, string] => [category, incidentCategoryLabels[category]],
+);
 
 /** Écrans 1 et 2 — tableau de bord et liste des incidents (§V.2). */
 export function Incidents() {
   const [search, setSearch] = useState("");
   const [organizationId, setOrganizationId] = useState<string | undefined>();
-  const [status, setStatus] = useState<IncidentStatus | typeof ALL>(ALL);
+  const [status, setStatus] = useState<IncidentStatusFilter>(ALL);
   const [priority, setPriority] = useState<Severity | typeof ALL>(ALL);
-  const [category, setCategory] = useState<IncidentCategory | typeof ALL>(ALL);
+  const [eventCategory, setEventCategory] = useState<IncidentEventCategory | typeof ALL>(ALL);
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(25);
   const debounced = useDebouncedValue(search.trim());
-  const stats = useIncidentStats();
+  const stats = useIncidentStats(organizationId);
   const incidents = useIncidents({
     page,
     perPage,
@@ -62,22 +81,23 @@ export function Incidents() {
     organizationId,
     status: status === ALL ? undefined : status,
     priority: priority === ALL ? undefined : priority,
-    category: category === ALL ? undefined : category,
+    eventCategory: eventCategory === ALL ? undefined : eventCategory,
   });
   const rows = incidents.data?.data ?? [];
   const s = stats.data;
   const reset = () => setPage(1);
 
+  function filterFromMetric(nextStatus?: IncidentStatus | "open", nextPriority?: Severity) {
+    setSearch("");
+    setStatus(nextStatus ?? ALL);
+    setPriority(nextPriority ?? ALL);
+    setEventCategory(ALL);
+    reset();
+  }
+
   /** Un compteur cliquable filtre la liste (accès aux données sources). */
-  const tile = (icon: typeof Inbox, label: string, value: number | undefined, filter?: IncidentStatus) => (
-    <button
-      type="button"
-      className="text-left [&>div]:h-full"
-      onClick={() => {
-        setStatus(filter ?? ALL);
-        reset();
-      }}
-    >
+  const tile = (icon: typeof Inbox, label: string, value: number | undefined, onClick: () => void) => (
+    <button type="button" className="text-left [&>div]:h-full" onClick={onClick}>
       <MetricCard icon={icon} label={label} value={value ?? "—"} />
     </button>
   );
@@ -99,7 +119,9 @@ export function Incidents() {
                     reference: i.reference,
                     client: i.organization.name,
                     vehicule: i.vehicle?.registration ?? "",
-                    categorie: incidentCategoryLabels[i.category],
+                    categorie_evenement: incidentCategoryLabels[i.eventCategory],
+                    evenement: incidentEventLabels[i.event],
+                    type_incident: incidentTypeLabels[i.incidentType],
                     priorite: severityMeta[i.priority].label,
                     creation: formatDateTime(i.createdAt),
                     responsable: i.assignee?.name ?? i.queue ?? "",
@@ -127,14 +149,14 @@ export function Incidents() {
       </Alert>
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-        {tile(Inbox, "Total", s?.total)}
-        {tile(CircleDot, "Nouveaux", s?.new, "new")}
-        {tile(ShieldAlert, "Critiques ouverts", s?.critical)}
-        {tile(UserCheck, "Assignés", s?.assigned, "assigned")}
-        {tile(Wrench, "En cours", s?.inProgress, "in_progress")}
-        {tile(Hourglass, "En attente", s?.onHold, "on_hold")}
-        {tile(CircleCheck, "Résolus", s?.resolved, "resolved")}
-        {tile(Lock, "Clôturés", s?.closed, "closed")}
+        {tile(Inbox, "Total", s?.total, () => filterFromMetric())}
+        {tile(CircleDot, "Nouveaux", s?.new, () => filterFromMetric("new"))}
+        {tile(ShieldAlert, "Critiques ouverts", s?.critical, () => filterFromMetric("open", "critical"))}
+        {tile(UserCheck, "Assignés", s?.assigned, () => filterFromMetric("assigned"))}
+        {tile(Wrench, "En cours", s?.inProgress, () => filterFromMetric("in_progress"))}
+        {tile(Hourglass, "En attente", s?.onHold, () => filterFromMetric("on_hold"))}
+        {tile(CircleCheck, "Résolus", s?.resolved, () => filterFromMetric("resolved"))}
+        {tile(Lock, "Clôturés", s?.closed, () => filterFromMetric("closed"))}
       </div>
 
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
@@ -164,10 +186,10 @@ export function Incidents() {
             label="Statut"
             value={status}
             onChange={(v) => {
-              setStatus(v as IncidentStatus | typeof ALL);
+              setStatus(v as IncidentStatusFilter);
               reset();
             }}
-            options={INCIDENT_STATUSES.map((x) => [x, incidentStatusMeta[x].label])}
+            options={statusOptions}
           />
           <Filter
             label="Priorité"
@@ -179,13 +201,13 @@ export function Incidents() {
             options={SEVERITIES.map((x) => [x, severityMeta[x].label])}
           />
           <Filter
-            label="Catégorie"
-            value={category}
+            label="Catégorie d'événement"
+            value={eventCategory}
             onChange={(v) => {
-              setCategory(v as IncidentCategory | typeof ALL);
+              setEventCategory(v as IncidentEventCategory | typeof ALL);
               reset();
             }}
-            options={INCIDENT_CATEGORIES.map((x) => [x, incidentCategoryLabels[x]])}
+            options={eventCategoryOptions}
           />
           <Button variant="outline" size="sm" onClick={() => incidents.refetch()} disabled={incidents.isFetching}>
             <RefreshCw data-icon="inline-start" className={incidents.isFetching ? "animate-spin" : undefined} />
@@ -218,7 +240,7 @@ export function Incidents() {
                     <TableHead>Référence</TableHead>
                     <TableHead className="hidden md:table-cell">Client</TableHead>
                     <TableHead className="hidden sm:table-cell">Véhicule</TableHead>
-                    <TableHead>Catégorie</TableHead>
+                    <TableHead>Qualification</TableHead>
                     <TableHead>Priorité</TableHead>
                     <TableHead className="hidden lg:table-cell">Création</TableHead>
                     <TableHead className="hidden lg:table-cell">Responsable</TableHead>
@@ -248,7 +270,12 @@ export function Incidents() {
                       <TableCell className="hidden font-mono text-xs sm:table-cell">
                         {i.vehicle?.registration ?? "—"}
                       </TableCell>
-                      <TableCell>{incidentCategoryLabels[i.category]}</TableCell>
+                      <TableCell className="max-w-64">
+                        <span className="font-medium">{incidentEventLabels[i.event]}</span>
+                        <span className="block text-muted-foreground text-xs">
+                          {incidentCategoryLabels[i.eventCategory]} · {incidentTypeLabels[i.incidentType]}
+                        </span>
+                      </TableCell>
                       <TableCell>
                         <StatusBadge tone={severityMeta[i.priority].tone}>{severityMeta[i.priority].label}</StatusBadge>
                       </TableCell>

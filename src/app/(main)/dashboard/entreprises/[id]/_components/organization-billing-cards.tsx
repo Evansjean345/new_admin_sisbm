@@ -4,16 +4,7 @@ import { useState } from "react";
 
 import Link from "next/link";
 
-import {
-  CalendarClock,
-  Gauge,
-  LayoutDashboard,
-  MapPinned,
-  PackagePlus,
-  Plus,
-  UsersRound,
-  Workflow,
-} from "lucide-react";
+import { PackagePlus, Plus } from "lucide-react";
 
 import { InvoicesTable } from "@/app/(main)/dashboard/_components/billing/invoices-table";
 import { AssignOfferDialog } from "@/app/(main)/dashboard/_components/client-offers/assign-offer-dialog";
@@ -25,48 +16,6 @@ import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle }
 import { useBillingStats, useInvoices } from "@/hooks/api/use-billing";
 import { useClientOffers } from "@/hooks/api/use-client-offers";
 import { formatDateTime } from "@/lib/format";
-
-/**
- * Rubriques de la plateforme Client accessibles depuis la fiche (§III.1) : mêmes écrans, filtrés
- * sur ce client, ouverts dans son espace contextualisé.
- */
-const RUBRICS = [
-  { tab: "overview", label: "Tableau de bord client", icon: LayoutDashboard },
-  { tab: "schedules", label: "Horaires", icon: CalendarClock },
-  { tab: "zones", label: "Zones géographiques", icon: MapPinned },
-  { tab: "speed", label: "Contrôle de vitesse", icon: Gauge },
-  { tab: "rules", label: "Moteur de règles", icon: Workflow },
-  { tab: "drivers", label: "Conducteurs", icon: UsersRound },
-] as const;
-
-export function ClientRubricsCard({ organizationId }: { organizationId: string }) {
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Rubriques client</CardTitle>
-        <CardDescription>
-          Ouvrez l'environnement du client. Toute action y est enregistrée avec votre identité et le client concerné.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-6">
-        <Button variant="outline" className="h-auto flex-col gap-1.5 py-3" asChild>
-          <Link href={`/dashboard/fleet?organizationId=${organizationId}`} prefetch={false}>
-            <MapPinned />
-            <span className="text-xs">Supervision</span>
-          </Link>
-        </Button>
-        {RUBRICS.map((r) => (
-          <Button key={r.tab} variant="outline" className="h-auto flex-col gap-1.5 py-3" asChild>
-            <Link href={`/dashboard/entreprises/${organizationId}/espace-client?tab=${r.tab}`} prefetch={false}>
-              <r.icon />
-              <span className="text-center text-xs">{r.label}</span>
-            </Link>
-          </Button>
-        ))}
-      </CardContent>
-    </Card>
-  );
-}
 
 /** Factures du client et solde (onglet Facturation). */
 export function OrganizationBillingCard({ organizationId }: { organizationId: string }) {

@@ -12,15 +12,17 @@ const KEYS = {
   rules: (org?: string) => ["client-rules", "rules", org ?? "all"] as const,
 };
 
-export const useGeofences = (organizationId?: string) =>
+export const useGeofences = (organizationId?: string, options: { enabled?: boolean } = {}) =>
   useQuery({
     queryKey: KEYS.geofences(organizationId),
     queryFn: () => clientRulesService.listGeofences(organizationId),
+    enabled: options.enabled ?? true,
   });
-export const useSpeedPolicies = (organizationId?: string) =>
+export const useSpeedPolicies = (organizationId?: string, options: { enabled?: boolean } = {}) =>
   useQuery({
     queryKey: KEYS.speed(organizationId),
     queryFn: () => clientRulesService.listSpeedPolicies(organizationId),
+    enabled: options.enabled ?? true,
   });
 export const useRules = (organizationId?: string) =>
   useQuery({ queryKey: KEYS.rules(organizationId), queryFn: () => clientRulesService.listRules(organizationId) });

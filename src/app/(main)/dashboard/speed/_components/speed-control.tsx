@@ -237,7 +237,7 @@ function SpeedPolicyDialog({
         <DialogHeader>
           <DialogTitle>{policy ? "Modifier la politique" : "Nouvelle politique de vitesse"}</DialogTitle>
           <DialogDescription>
-            Une alerte est levée au-delà de « limite + tolérance » pendant la durée minimale.
+            Une alerte est déclenchée lorsque le seuil de vitesse est dépassé pendant la durée minimale.
           </DialogDescription>
         </DialogHeader>
         <FieldGroup className="gap-4">
@@ -324,7 +324,7 @@ function SpeedPolicyDialog({
               </FieldDescription>
             </Field>
           ) : null}
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 gap-3">
             <Field className="gap-1.5">
               <FieldLabel htmlFor="sp-limit">Limite (km/h)</FieldLabel>
               <Input
@@ -332,15 +332,6 @@ function SpeedPolicyDialog({
                 type="number"
                 value={form.limitKph}
                 onChange={(e) => set("limitKph", num(e.target.value))}
-              />
-            </Field>
-            <Field className="gap-1.5">
-              <FieldLabel htmlFor="sp-tol">Tolérance</FieldLabel>
-              <Input
-                id="sp-tol"
-                type="number"
-                value={form.toleranceKph}
-                onChange={(e) => set("toleranceKph", num(e.target.value))}
               />
             </Field>
             <Field className="gap-1.5">
@@ -369,12 +360,6 @@ function SpeedPolicyDialog({
                 </SelectGroup>
               </SelectContent>
             </Select>
-          </Field>
-          <Field orientation="horizontal">
-            <Switch id="sp-limiter" checked={form.limiterEnabled} onCheckedChange={(v) => set("limiterEnabled", v)} />
-            <FieldLabel htmlFor="sp-limiter" className="font-normal">
-              Activer le bridage (limiteur) sur les boîtiers compatibles
-            </FieldLabel>
           </Field>
         </FieldGroup>
         <DialogFooter>
